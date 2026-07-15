@@ -157,7 +157,7 @@ If we update this policy:
 ## Contact
 
 bitchat is an open source project. For privacy questions:
-- Review our code: https://github.com/adamboardman/micromes-android
+- Review our code: https://github.com/adamboardman/micromesh-android
 - Open an issue on GitHub
 - Join the discussion in public rooms
 
