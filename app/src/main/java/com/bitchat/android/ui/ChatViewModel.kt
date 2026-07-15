@@ -154,6 +154,7 @@ class ChatViewModel(
 
 
     val messages: StateFlow<List<BitchatMessage>> = state.messages
+    val messagePeerIDs: StateFlow<Map<String,String>> = state.messagePeerIDs
     val connectedPeers: StateFlow<List<String>> = state.connectedPeers
     val nickname: StateFlow<String> = state.nickname
     val isConnected: StateFlow<Boolean> = state.isConnected
@@ -228,7 +229,7 @@ class ChatViewModel(
                     val myNick = state.getNicknameValue() ?: mesh.myPeerID
                     val unread = mutableSetOf<String>()
                     byPeer.forEach { (peer, list) ->
-                        if (list.any { msg -> msg.sender != myNick && !seen.hasRead(msg.id) }) unread.add(peer)
+                        if (list.any { msg -> msg.senderNickname != myNick && !seen.hasRead(msg.id) }) unread.add(peer)
                     }
                     state.setUnreadPrivateMessages(unread)
                 } catch (_: Exception) { }
@@ -437,7 +438,7 @@ class ChatViewModel(
             val unreadKeys = state.getUnreadPrivateMessagesValue()
             if (unreadKeys.isEmpty()) return
 
-            val me = state.getNicknameValue() ?: mesh.myPeerID
+            val me = state.getNicknameValue() ?: "anon"
             val chats = state.getPrivateChatsValue()
 
             // Pick the latest incoming message among unread conversations
@@ -448,7 +449,7 @@ class ChatViewModel(
                 val list = chats[key]
                 if (!list.isNullOrEmpty()) {
                     // Prefer the latest incoming message (sender != me), fallback to last message
-                    val latestIncoming = list.lastOrNull { it.sender != me }
+                    val latestIncoming = list.lastOrNull { it.senderNickname != me }
                     val candidateTime = (latestIncoming ?: list.last()).timestamp.time
                     if (candidateTime > bestTime) {
                         bestTime = candidateTime
@@ -556,12 +557,9 @@ class ChatViewModel(
             } else {
                 // Send public/channel message via mesh
                 val message = BitchatMessage(
-                    sender = state.getNicknameValue() ?: mesh.myPeerID,
+                    senderNickname = state.getNicknameValue() ?: mesh.myPeerID,
                     content = content,
                     timestamp = Date(),
-                    isRelay = false,
-                    senderPeerID = mesh.myPeerID,
-                    mentions = if (mentions.isNotEmpty()) mentions else null,
                     channel = currentChannelValue
                 )
 
@@ -587,7 +585,7 @@ class ChatViewModel(
                         mesh.sendMessage(content, mentions, currentChannelValue)
                     }
                 } else {
-                    messageManager.addMessage(message)
+                    messageManager.addMessage(message, myPeerID)
                     mesh.sendMessage(content, mentions, null)
                 }
             }
@@ -894,8 +892,8 @@ class ChatViewModel(
     
     // MARK: - BluetoothMeshDelegate Implementation (delegated)
     
-    override fun didReceiveMessage(message: BitchatMessage) {
-        meshDelegateHandler.didReceiveMessage(message)
+    override fun didReceiveMessage(message: BitchatMessage, peerID: String?, isPrivate: Boolean) {
+        meshDelegateHandler.didReceiveMessage(message, peerID, isPrivate)
     }
     
     override fun didUpdatePeerList(peers: List<String>) {

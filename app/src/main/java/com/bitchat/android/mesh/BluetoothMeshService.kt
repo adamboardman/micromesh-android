@@ -407,13 +407,13 @@ class BluetoothMeshService(private val context: Context) : TransportBridgeServic
             }
             
             // Callbacks
-            override fun onMessageReceived(message: BitchatMessage) {
+            override fun onMessageReceived(message: BitchatMessage, peerID: String?, isPrivate: Boolean) {
                 // Always reflect into process-wide store so UI can hydrate after recreation
                 try {
                     when {
-                        message.isPrivate -> {
-                            val peer = message.senderPeerID ?: ""
-                            if (peer.isNotEmpty()) com.bitchat.android.services.AppStateStore.addPrivateMessage(peer, message)
+                        isPrivate -> {
+                            if (!peerID.isNullOrEmpty()) com.bitchat.android.services.AppStateStore.addPrivateMessage(
+                                peerID, message)
                         }
                         message.channel != null -> {
                             com.bitchat.android.services.AppStateStore.addChannelMessage(message.channel!!, message)
@@ -424,12 +424,12 @@ class BluetoothMeshService(private val context: Context) : TransportBridgeServic
                     }
                 } catch (_: Exception) { }
                 // And forward to UI delegate if attached
-                delegate?.didReceiveMessage(message)
+                delegate?.didReceiveMessage(message, peerID, isPrivate)
 
                 // If no UI delegate attached (app closed), show DM notification via service manager
-                if (delegate == null && message.isPrivate) {
+                if (delegate == null && isPrivate) {
                     try {
-                        val senderPeerID = message.senderPeerID
+                        val senderPeerID = peerID
                         if (senderPeerID != null) {
                             val nick = try { peerManager.getPeerNickname(senderPeerID) } catch (_: Exception) { null } ?: senderPeerID
                             val preview = com.bitchat.android.ui.NotificationTextUtils.buildPrivateMessagePreview(message)
@@ -762,17 +762,27 @@ class BluetoothMeshService(private val context: Context) : TransportBridgeServic
     /**
      * Send public message
      */
-    fun sendMessage(content: String, mentions: List<String> = emptyList(), channel: String? = null) {
+    fun sendMessage(content: String, channel: String? = null) {
         if (content.isEmpty()) return
         
         serviceScope.launch {
+            val myNickname = peerManager.getPeerNickname(myPeerID) ?: "anon"
+            val payload = BitchatMessage(
+                senderNickname = myNickname,
+                content = content,
+                type = BitchatMessageType.Message,
+                timestamp = Date(),
+                channel = channel
+            )
+
+            val binaryPayload = payload.toBinaryPayload() ?: return@launch
             val packet = BitchatPacket(
                 version = 1u,
                 type = MessageType.MESSAGE.value,
                 senderID = hexStringToByteArray(myPeerID),
                 recipientID = SpecialRecipients.BROADCAST,
                 timestamp = System.currentTimeMillis().toULong(),
-                payload = content.toByteArray(Charsets.UTF_8),
+                payload = binaryPayload,
                 signature = null,
                 ttl = MAX_TTL
             )

@@ -41,6 +41,7 @@ import com.bitchat.android.ui.media.FullScreenImageViewer
 fun ChatScreen(viewModel: ChatViewModel) {
     val colorScheme = MaterialTheme.colorScheme
     val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val messagePeerIDs by viewModel.messagePeerIDs.collectAsStateWithLifecycle()
     val connectedPeers by viewModel.connectedPeers.collectAsStateWithLifecycle()
     val nickname by viewModel.nickname.collectAsStateWithLifecycle()
     val selectedPrivatePeer by viewModel.selectedPrivateChatPeer.collectAsStateWithLifecycle()
@@ -168,7 +169,7 @@ fun ChatScreen(viewModel: ChatViewModel) {
                 onMessageLongPress = { message ->
                     // Message long press - open user action sheet with message context
                     // Extract base nickname from message sender (contains all necessary info)
-                    val (baseName, _) = splitSuffix(message.sender)
+                    val (baseName, _) = splitSuffix(message.senderNickname)
                     selectedUserForSheet = baseName
                     selectedMessageForSheet = message
                     showUserSheet = true
@@ -180,7 +181,9 @@ fun ChatScreen(viewModel: ChatViewModel) {
                     viewerImagePaths = allImagePaths
                     initialViewerIndex = initialIndex
                     showFullScreenImageViewer = true
-                }
+                },
+                messagePeerIDs = messagePeerIDs,
+                isPrivate = false,
             )
             // Input area - stays at bottom
         // Bridge file share from lower-level input to ViewModel
@@ -507,7 +510,8 @@ private fun ChatDialogs(
     AboutSheet(
         isPresented = showAppInfo,
         onDismiss = onAppInfoDismiss,
-        onShowDebug = { showDebugSheet = true }
+        onShowDebug = { showDebugSheet = true },
+        meshService = viewModel.meshService,
     )
     if (showDebugSheet) {
         com.bitchat.android.ui.debug.DebugSettingsSheet(
@@ -541,7 +545,8 @@ private fun ChatDialogs(
             onDismiss = onUserSheetDismiss,
             targetNickname = selectedUserForSheet,
             selectedMessage = selectedMessageForSheet,
-            viewModel = viewModel
+            viewModel = viewModel,
+            peerID = privateChatSheetPeer
         )
     }
     // MeshPeerList sheet (network view)

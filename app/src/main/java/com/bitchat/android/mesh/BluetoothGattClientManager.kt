@@ -525,7 +525,7 @@ class BluetoothGattClientManager(
         }
         
         // Add pending connection and start connection
-        if (connectionTracker.addPendingConnection(deviceAddress)) {
+        if (connectionTracker.addPendingConnection(deviceAddress, peerID)) {
             connectToDevice(device, rssi, peerID)
         }
     }

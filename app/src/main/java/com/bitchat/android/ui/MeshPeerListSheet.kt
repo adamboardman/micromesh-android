@@ -356,7 +356,7 @@ fun PeopleSection(
 
         // Helper to compute display name used for a given key
         fun computeDisplayNameForPeerId(key: String): String {
-            return if (key == nickname) "You" else (peerNicknames[key] ?: (privateChats[key]?.lastOrNull()?.sender ?: key.take(12)))
+            return if (key == nickname) "You" else (peerNicknames[key] ?: (privateChats[key]?.lastOrNull()?.senderNickname ?: key.take(12)))
         }
 
         val baseNameCounts = mutableMapOf<String, Int>()
@@ -390,7 +390,7 @@ fun PeopleSection(
                         !noiseHexByPeerID.values.any { it.equals(key, ignoreCase = true) }
             }
             .forEach { convKey ->
-                val dn = peerNicknames[convKey] ?: (privateChats[convKey]?.lastOrNull()?.sender ?: convKey.take(12))
+                val dn = peerNicknames[convKey] ?: (privateChats[convKey]?.lastOrNull()?.senderNickname ?: convKey.take(12))
                 val (b, _) = splitSuffix(dn)
                 if (b != "You") baseNameCounts[b] = (baseNameCounts[b] ?: 0) + 1
             }
@@ -405,12 +405,12 @@ fun PeopleSection(
             val nostrUnread = if (noiseHex != null) hasUnreadPrivateMessages.contains(noiseHex) else false
             val combinedHasUnread = meshUnread || nostrUnread
             val combinedUnreadCount = (
-                privateChats[peerID]?.count { msg -> msg.sender != nickname && meshUnread } ?: 0
+                privateChats[peerID]?.count { msg -> msg.senderNickname != nickname && meshUnread } ?: 0
             ) + (
-                if (noiseHex != null) privateChats[noiseHex]?.count { msg -> msg.sender != nickname && nostrUnread } ?: 0 else 0
+                if (noiseHex != null) privateChats[noiseHex]?.count { msg -> msg.senderNickname != nickname && nostrUnread } ?: 0 else 0
             )
 
-            val displayName = if (peerID == nickname) "You" else (peerNicknames[peerID] ?: (privateChats[peerID]?.lastOrNull()?.sender ?: peerID.take(12)))
+            val displayName = if (peerID == nickname) "You" else (peerNicknames[peerID] ?: (privateChats[peerID]?.lastOrNull()?.senderNickname ?: peerID.take(12)))
             val (bName, _) = splitSuffix(displayName)
             val showHash = (baseNameCounts[bName] ?: 0) > 1
 
@@ -472,9 +472,9 @@ fun PeopleSection(
 
             // Compute unreadCount from either noise conversation or Nostr conversation
             val unreadCount = (
-                privateChats[favPeerID]?.count { msg -> msg.sender != nickname && hasUnreadPrivateMessages.contains(favPeerID) } ?: 0
+                privateChats[favPeerID]?.count { msg -> msg.senderNickname != nickname && hasUnreadPrivateMessages.contains(favPeerID) } ?: 0
             ) + (
-                if (nostrConvKey != null) privateChats[nostrConvKey]?.count { msg -> msg.sender != nickname && hasUnreadPrivateMessages.contains(nostrConvKey) } ?: 0 else 0
+                if (nostrConvKey != null) privateChats[nostrConvKey]?.count { msg -> msg.senderNickname != nickname && hasUnreadPrivateMessages.contains(nostrConvKey) } ?: 0 else 0
             )
 
             PeerItem(
@@ -778,6 +778,7 @@ fun PrivateChatSheet(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val privateChats by viewModel.privateChats.collectAsStateWithLifecycle()
+    val messagePeerIDs by viewModel.messagePeerIDs.collectAsStateWithLifecycle()
     val peerNicknames by viewModel.peerNicknames.collectAsStateWithLifecycle()
     val nickname by viewModel.nickname.collectAsStateWithLifecycle()
     val connectedPeers by viewModel.connectedPeers.collectAsStateWithLifecycle()
@@ -864,7 +865,9 @@ fun PrivateChatSheet(
                         onNicknameClick = { /* handle mention */ },
                         onMessageLongPress = { /* handle long press */ },
                         onCancelTransfer = { msg -> viewModel.cancelMediaSend(msg.id) },
-                        onImageClick = { _, _, _ -> /* handle image click */ }
+                        onImageClick = { _, _, _ -> /* handle image click */ },
+                        messagePeerIDs = messagePeerIDs,
+                        isPrivate = true,
                     )
 
                     HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.3f))

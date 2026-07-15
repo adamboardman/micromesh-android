@@ -163,7 +163,7 @@ class WifiAwareMeshService(private val context: Context) : MeshService, Transpor
                 override fun gcsTargetFpr(): Double = 0.01
             },
             hooks = MeshCore.Hooks(
-                onMessageReceived = { message -> handleMessageReceived(message) },
+                onMessageReceived = { message, peerID, isPrivate -> handleMessageReceived(message, peerID, isPrivate) },
                 onAnnounceProcessed = { routed, _ ->
                     routed.peerID?.let { pid ->
                         try { meshCore.gossipSyncManager.scheduleInitialSyncToPeer(pid, 1_000) } catch (_: Exception) { }
@@ -180,11 +180,11 @@ class WifiAwareMeshService(private val context: Context) : MeshService, Transpor
         fragmentingSender = FragmentingPacketSender(serviceScope, meshCore.fragmentManager, TAG)
     }
 
-    private fun handleMessageReceived(message: BitchatMessage) {
+    private fun handleMessageReceived(message: BitchatMessage, peerID: String?, isPrivate: Boolean) {
         try {
             when {
-                message.isPrivate -> {
-                    val peer = message.senderPeerID ?: ""
+                isPrivate -> {
+                    val peer = peerID ?: ""
                     if (peer.isNotEmpty()) com.bitchat.android.services.AppStateStore.addPrivateMessage(peer, message)
                 }
                 message.channel != null -> {
@@ -196,9 +196,9 @@ class WifiAwareMeshService(private val context: Context) : MeshService, Transpor
             }
         } catch (_: Exception) { }
 
-        if (delegate == null && message.isPrivate) {
+        if (delegate == null && isPrivate) {
             try {
-                val senderPeerID = message.senderPeerID
+                val senderPeerID = peerID
                 if (senderPeerID != null) {
                     val nick = try { meshCore.getPeerNickname(senderPeerID) } catch (_: Exception) { null } ?: senderPeerID
                     val preview = com.bitchat.android.ui.NotificationTextUtils.buildPrivateMessagePreview(message)
@@ -829,7 +829,7 @@ class WifiAwareMeshService(private val context: Context) : MeshService, Transpor
             Log.d(TAG, "SERVER: deferring serve for ${peerId.take(8)}; pending Aware data path(s): $pending")
             return
         }
-        if (!connectionTracker.addPendingConnection(peerId)) {
+        if (!connectionTracker.addPendingConnection(peerId, null)) {
             return
         }
 
@@ -1091,7 +1091,7 @@ class WifiAwareMeshService(private val context: Context) : MeshService, Transpor
             Log.d(TAG, "CLIENT: deferring server-ready for ${peerId.take(8)}; pending Aware data path(s): $pending")
             return
         }
-        if (!connectionTracker.addPendingConnection(peerId)) {
+        if (!connectionTracker.addPendingConnection(peerId, null)) {
             return
         }
 

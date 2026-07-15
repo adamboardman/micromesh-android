@@ -23,10 +23,9 @@ class AppStateStoreTest {
         val timestamp = Date(1_700_000_000_000L)
         val originalDelivery = BitchatMessage(
             id = "random-id-from-first-delivery",
-            sender = "alice",
+            senderNickname = "alice",
             content = "hello from sync",
             timestamp = timestamp,
-            senderPeerID = "1122334455667788"
         )
         val requestSyncReplay = originalDelivery.copy(id = "different-random-id-from-replay")
 
@@ -40,10 +39,9 @@ class AppStateStoreTest {
     fun `public timeline still keeps same content sent at different packet timestamps`() {
         val first = BitchatMessage(
             id = "first-packet-id",
-            sender = "alice",
+            senderNickname = "alice",
             content = "same text",
             timestamp = Date(1_700_000_000_000L),
-            senderPeerID = "1122334455667788"
         )
         val second = first.copy(
             id = "second-packet-id",

@@ -6,7 +6,7 @@ import com.bitchat.android.model.BitchatMessage
  * Shared mesh delegate interface for transport-agnostic callbacks.
  */
 interface MeshDelegate {
-    fun didReceiveMessage(message: BitchatMessage)
+    fun didReceiveMessage(message: BitchatMessage, peerID: String?, isPrivate: Boolean)
     fun didUpdatePeerList(peers: List<String>)
     fun didReceiveChannelLeave(channel: String, fromPeer: String)
     fun didReceiveDeliveryAck(messageID: String, recipientPeerID: String)

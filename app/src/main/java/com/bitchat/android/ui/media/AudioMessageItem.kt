@@ -36,7 +36,8 @@ fun AudioMessageItem(
     onNicknameClick: ((String) -> Unit)?,
     onMessageLongPress: ((BitchatMessage) -> Unit)?,
     onCancelTransfer: ((BitchatMessage) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    peerID: String?,
 ) {
     val path = message.content.trim()
     // Derive sending progress if applicable
@@ -55,7 +56,8 @@ fun AudioMessageItem(
             currentUserNickname = currentUserNickname,
             meshService = meshService,
             colorScheme = colorScheme,
-            timeFormatter = timeFormatter
+            timeFormatter = timeFormatter,
+            peerID = peerID,
         )
         val haptic = LocalHapticFeedback.current
         var headerLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -83,7 +85,7 @@ fun AudioMessageItem(
                 progressOverride = overrideProgress,
                 progressColor = overrideColor
             )
-            val showCancel = message.sender == currentUserNickname && (message.deliveryStatus is com.bitchat.android.model.DeliveryStatus.PartiallyDelivered)
+            val showCancel = message.senderNickname == currentUserNickname && (message.deliveryStatus is com.bitchat.android.model.DeliveryStatus.PartiallyDelivered)
             if (showCancel) {
                 Spacer(Modifier.width(8.dp))
                 Box(

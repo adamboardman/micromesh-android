@@ -40,7 +40,7 @@ class MeshCore(
     private val hooks: Hooks = Hooks()
 ) {
     data class Hooks(
-        val onMessageReceived: ((BitchatMessage) -> Unit)? = null,
+        val onMessageReceived: ((BitchatMessage, String?, Boolean) -> Unit)? = null,
         val onPeerIdBindingUpdated: ((String, String, ByteArray, String?) -> Unit)? = null,
         val onAnnounceProcessed: ((RoutedPacket, Boolean) -> Unit)? = null,
         val readReceiptInterceptor: ((String, String) -> Boolean)? = null,
@@ -297,9 +297,9 @@ class MeshCore(
                 return delegate?.decryptChannelMessage(encryptedContent, channel)
             }
 
-            override fun onMessageReceived(message: BitchatMessage) {
-                hooks.onMessageReceived?.invoke(message)
-                delegate?.didReceiveMessage(message)
+            override fun onMessageReceived(message: BitchatMessage, peerID: String?, isPrivate: Boolean) {
+                hooks.onMessageReceived?.invoke(message, peerID, isPrivate)
+                delegate?.didReceiveMessage(message, peerID, isPrivate)
             }
 
             override fun onChannelLeave(channel: String, fromPeer: String) {

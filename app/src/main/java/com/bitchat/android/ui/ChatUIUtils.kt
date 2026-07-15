@@ -43,6 +43,7 @@ fun formatMessageAsAnnotatedString(
     message: BitchatMessage,
     currentUserNickname: String,
     meshService: MeshService,
+    peerID: String?,
     colorScheme: ColorScheme,
     timeFormatter: SimpleDateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 ): AnnotatedString {
@@ -50,20 +51,20 @@ fun formatMessageAsAnnotatedString(
     val isDark = colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f
     
     // Determine if this message was sent by self
-    val isSelf = message.senderPeerID == meshService.myPeerID || 
-                 message.sender == currentUserNickname ||
-                 message.sender.startsWith("$currentUserNickname#")
+    val isSelf = peerID == meshService.myPeerID ||
+                 message.senderNickname == currentUserNickname ||
+                 message.senderNickname != null && message.senderNickname.startsWith("$currentUserNickname#")
     
-    if (message.sender != "system") {
+    if (message.senderNickname != "system") {
         // Get base color for this peer (iOS-style color assignment)
         val baseColor = if (isSelf) {
             Color(0xFFFF9500) // Orange for self (iOS orange)
         } else {
-            getPeerColor(message, isDark)
+            getPeerColor(message, peerID, isDark)
         }
         
         // Split sender into base name and hashtag suffix
-        val (baseName, suffix) = splitSuffix(message.sender)
+        val (baseName, suffix) = splitSuffix(message.senderNickname)
         
         // Sender prefix "<@"
         builder.pushStyle(SpanStyle(
@@ -89,7 +90,7 @@ fun formatMessageAsAnnotatedString(
         if (!isSelf) {
             builder.addStringAnnotation(
                 tag = "nickname_click",
-                annotation = (message.originalSender ?: message.sender),
+                annotation = message.senderNickname ?: "",
                 start = nicknameStart,
                 end = nicknameEnd
             )
@@ -116,8 +117,8 @@ fun formatMessageAsAnnotatedString(
         builder.append("> ")
         builder.pop()
         
-        // Message content with iOS-style hashtag and mention highlighting
-        appendIOSFormattedContent(builder, message.content, message.mentions, currentUserNickname, baseColor, isSelf, isDark)
+        // Message content with iOS-style hashtag highlighting
+        appendIOSFormattedContent(builder, message.content, null, currentUserNickname, baseColor, isSelf, isDark)
         
         // iOS-style timestamp at the END (smaller, grey)
         // Timestamp (and optional PoW badge)
@@ -163,19 +164,20 @@ fun formatMessageHeaderAnnotatedString(
     message: BitchatMessage,
     currentUserNickname: String,
     meshService: MeshService,
+    peerID: String?,
     colorScheme: ColorScheme,
     timeFormatter: SimpleDateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 ): AnnotatedString {
     val builder = AnnotatedString.Builder()
     val isDark = colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f
 
-    val isSelf = message.senderPeerID == meshService.myPeerID ||
-            message.sender == currentUserNickname ||
-            message.sender.startsWith("$currentUserNickname#")
+    val isSelf = peerID == meshService.myPeerID ||
+            message.senderNickname == currentUserNickname ||
+            message.senderNickname != null && message.senderNickname.startsWith("$currentUserNickname#")
 
-    if (message.sender != "system") {
-        val baseColor = if (isSelf) Color(0xFFFF9500) else getPeerColor(message, isDark)
-        val (baseName, suffix) = splitSuffix(message.sender)
+    if (message.senderNickname != "system") {
+        val baseColor = if (isSelf) Color(0xFFFF9500) else getPeerColor(message, peerID, isDark)
+        val (baseName, suffix) = splitSuffix(message.senderNickname)
 
         // "<@"
         builder.pushStyle(SpanStyle(
@@ -198,7 +200,7 @@ fun formatMessageHeaderAnnotatedString(
         if (!isSelf) {
             builder.addStringAnnotation(
                 tag = "nickname_click",
-                annotation = (message.originalSender ?: message.sender),
+                annotation = message.senderNickname ?: "",
                 start = nicknameStart,
                 end = nicknameEnd
             )
@@ -259,24 +261,24 @@ fun formatMessageHeaderAnnotatedString(
  * iOS-style peer color assignment using djb2 hash algorithm
  * Avoids orange (~30°) reserved for self messages
  */
-fun getPeerColor(message: BitchatMessage, isDark: Boolean): Color {
+fun getPeerColor(message: BitchatMessage, peerID: String?, isDark: Boolean): Color {
     // Create seed from peer identifier (prioritizing stable keys)
     val seed = when {
-        message.senderPeerID?.startsWith("nostr:") == true || message.senderPeerID?.startsWith("nostr_") == true -> {
+        peerID?.startsWith("nostr:") == true || peerID?.startsWith("nostr_") == true -> {
             // For Nostr peers, use the full key if available, otherwise the peer ID
-            "nostr:${message.senderPeerID.lowercase()}"
+            "nostr:${peerID.lowercase()}"
         }
-        message.senderPeerID?.length == 16 -> {
-            // For ephemeral peer IDs, try to get stable Noise key, fallback to peer ID  
-            "noise:${message.senderPeerID.lowercase()}"
+        peerID?.length == 16 -> {
+            // For ephemeral peer IDs, try to get stable Noise key, fallback to peer ID
+            "noise:${peerID.lowercase()}"
         }
-        message.senderPeerID?.length == 64 -> {
+        peerID?.length == 64 -> {
             // This is already a stable Noise key
-            "noise:${message.senderPeerID.lowercase()}"
+            "noise:${peerID.lowercase()}"
         }
         else -> {
             // Fallback to sender name
-            message.sender.lowercase()
+            message.senderNickname?.lowercase()
         }
     }
     
@@ -286,11 +288,13 @@ fun getPeerColor(message: BitchatMessage, isDark: Boolean): Color {
 /**
  * Generate consistent peer color using djb2 hash (matches iOS algorithm exactly)
  */
-fun colorForPeerSeed(seed: String, isDark: Boolean): Color {
+fun colorForPeerSeed(seed: String?, isDark: Boolean): Color {
     // djb2 hash algorithm (matches iOS implementation)
     var hash = 5381UL
-    for (byte in seed.toByteArray()) {
-        hash = ((hash shl 5) + hash) + byte.toUByte().toULong()
+    if (seed != null) {
+        for (byte in seed.toByteArray()) {
+            hash = ((hash shl 5) + hash) + byte.toUByte().toULong()
+        }
     }
     
     var hue = (hash % 360UL).toDouble() / 360.0
@@ -314,11 +318,12 @@ fun colorForPeerSeed(seed: String, isDark: Boolean): Color {
 /**
  * Split a name into base and a '#abcd' suffix if present (matches iOS splitSuffix exactly)
  */
-fun splitSuffix(name: String): Pair<String, String> {
+fun splitSuffix(name: String?): Pair<String, String> {
+    if (name == null) return Pair("anon", "")
     if (name.length < 5) return Pair(name, "")
     
     val suffix = name.takeLast(5)
-    if (suffix.startsWith("#") && suffix.drop(1).all { 
+    if ((suffix.startsWith("#")||suffix.startsWith(":") ) && suffix.drop(1).all {
         it.isDigit() || it.lowercaseChar() in 'a'..'f' 
     }) {
         val base = name.dropLast(5)

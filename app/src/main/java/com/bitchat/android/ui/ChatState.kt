@@ -106,6 +106,9 @@ class ChatState(
     private val _peerNicknames = MutableStateFlow<Map<String, String>>(emptyMap())
     val peerNicknames: StateFlow<Map<String, String>> = _peerNicknames.asStateFlow()
 
+    private val _messagePeerIDs = MutableStateFlow<Map<String, String>>(emptyMap())
+    val messagePeerIDs: StateFlow<Map<String, String>> = _messagePeerIDs.asStateFlow()
+
     private val _peerRSSI = MutableStateFlow<Map<String, Int>>(emptyMap())
     val peerRSSI: StateFlow<Map<String, Int>> = _peerRSSI.asStateFlow()
 
@@ -168,6 +171,7 @@ class ChatState(
     
     // Getters for internal state access
     fun getMessagesValue() = _messages.value
+    fun getMessagePeerIDsValue() = _messagePeerIDs.value
     fun getConnectedPeersValue() = _connectedPeers.value
     fun getNicknameValue() = _nickname.value
     fun getPrivateChatsValue() = _privateChats.value
@@ -200,7 +204,11 @@ class ChatState(
     fun setMessages(messages: List<BitchatMessage>) {
         _messages.value = messages
     }
-    
+
+    fun setMessagePeerIDs(messagePeerIDs: Map<String,String>) {
+        _messagePeerIDs.value = messagePeerIDs
+    }
+
     fun setConnectedPeers(peers: List<String>) {
         _connectedPeers.value = peers
     }

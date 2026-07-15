@@ -203,11 +203,10 @@ class GeohashViewModel(
                 val pow = PoWPreferenceManager.getCurrentSettings()
                 val localMsg = com.bitchat.android.model.BitchatMessage(
                     id = tempId,
-                    sender = nickname ?: myPeerID,
+                    senderNickname = nickname ?: myPeerID,
                     content = content,
                     timestamp = Date(),
-                    isRelay = false,
-                    senderPeerID = "geohash:${channel.geohash}",
+                    // senderPeerID = "geohash:${channel.geohash}", // TODO - this might need fixing
                     channel = "#${channel.geohash}",
                     powDifficulty = if (pow.enabled) pow.difficulty else null
                 )
@@ -321,20 +320,18 @@ class GeohashViewModel(
             repo.refreshGeohashPeople()
             repo.updateReactiveParticipantCounts()
             val sysMsg = com.bitchat.android.model.BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "blocked $targetNickname in geohash channels",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(sysMsg)
+            messageManager.addMessage(sysMsg, null)
         } else {
             val sysMsg = com.bitchat.android.model.BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "user '$targetNickname' not found in current geohash",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(sysMsg)
+            messageManager.addMessage(sysMsg, null)
         }
     }
 

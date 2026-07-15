@@ -58,7 +58,7 @@ class UnifiedMeshService(
 
     override fun sendMessage(content: String, mentions: List<String>, channel: String?) {
         when {
-            isBleEnabled() -> bluetooth.sendMessage(content, mentions, channel)
+            isBleEnabled() -> bluetooth.sendMessage(content, channel)
             else -> wifiService()?.sendMessage(content, mentions, channel)
         }
     }
@@ -295,8 +295,8 @@ class UnifiedMeshService(
         try { wifiService()?.clearAllEncryptionData() } catch (_: Exception) { }
     }
 
-    override fun didReceiveMessage(message: BitchatMessage) {
-        delegate?.didReceiveMessage(message)
+    override fun didReceiveMessage(message: BitchatMessage, peerID: String?, isPrivate: Boolean) {
+        delegate?.didReceiveMessage(message, peerID, isPrivate)
     }
 
     override fun didUpdatePeerList(peers: List<String>) {

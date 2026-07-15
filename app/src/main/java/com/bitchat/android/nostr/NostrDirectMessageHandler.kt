@@ -124,13 +124,9 @@ class NostrDirectMessageHandler(
 
                 val message = BitchatMessage(
                     id = pm.messageID,
-                    sender = senderNickname,
+                    senderNickname = senderNickname,
                     content = pm.content,
                     timestamp = timestamp,
-                    isRelay = false,
-                    isPrivate = true,
-                    recipientNickname = state.getNicknameValue(),
-                    senderPeerID = convKey,
                     deliveryStatus = DeliveryStatus.Delivered(to = state.getNicknameValue() ?: "Unknown", at = Date())
                 )
 
@@ -138,7 +134,7 @@ class NostrDirectMessageHandler(
                 val suppressUnread = seenStore.hasRead(pm.messageID)
 
                 withContext(Dispatchers.Main) {
-                    privateChatManager.handleIncomingPrivateMessage(message, suppressUnread)
+                    privateChatManager.handleIncomingPrivateMessage(message, suppressUnread, convKey)
                 }
 
                 if (!seenStore.hasDelivered(pm.messageID)) {
@@ -173,18 +169,14 @@ class NostrDirectMessageHandler(
                     val savedPath = com.bitchat.android.features.file.FileUtils.saveIncomingFile(application, file)
                     val message = BitchatMessage(
                         id = uniqueMsgId,
-                        sender = senderNickname,
+                        senderNickname = senderNickname,
                         content = savedPath,
                         type = com.bitchat.android.features.file.FileUtils.messageTypeForMime(file.mimeType),
                         timestamp = timestamp,
-                        isRelay = false,
-                        isPrivate = true,
-                        recipientNickname = state.getNicknameValue(),
-                        senderPeerID = convKey
                     )
                     Log.d(TAG, "📄 Saved Nostr encrypted incoming file to $savedPath (msgId=$uniqueMsgId)")
                     withContext(Dispatchers.Main) {
-                        privateChatManager.handleIncomingPrivateMessage(message, suppressUnread = false)
+                        privateChatManager.handleIncomingPrivateMessage(message, suppressUnread = false, convKey)
                     }
                 } else {
                     Log.w(TAG, "⚠️ Failed to decode Nostr file transfer from $convKey")

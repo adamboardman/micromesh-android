@@ -46,7 +46,8 @@ fun ImageMessageItem(
     onMessageLongPress: ((BitchatMessage) -> Unit)?,
     onCancelTransfer: ((BitchatMessage) -> Unit)?,
     onImageClick: ((String, List<String>, Int) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    peerID: String?,
 ) {
     val path = message.content.trim()
     Column(modifier = modifier.fillMaxWidth()) {
@@ -55,7 +56,8 @@ fun ImageMessageItem(
             currentUserNickname = currentUserNickname,
             meshService = meshService,
             colorScheme = colorScheme,
-            timeFormatter = timeFormatter
+            timeFormatter = timeFormatter,
+            peerID = peerID,
         )
         val haptic = LocalHapticFeedback.current
         var headerLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -95,7 +97,7 @@ fun ImageMessageItem(
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                 Box {
-                    if (progressFraction != null && progressFraction < 1f && message.sender == currentUserNickname) {
+                    if (progressFraction != null && progressFraction < 1f && message.senderNickname == currentUserNickname) {
                         // Cyberpunk block-reveal while sending
                         BlockRevealImage(
                             bitmap = img,
@@ -128,7 +130,7 @@ fun ImageMessageItem(
                         )
                     }
                     // Cancel button overlay during sending
-                    val showCancel = message.sender == currentUserNickname && (message.deliveryStatus is com.bitchat.android.model.DeliveryStatus.PartiallyDelivered)
+                    val showCancel = message.senderNickname == currentUserNickname && (message.deliveryStatus is com.bitchat.android.model.DeliveryStatus.PartiallyDelivered)
                     if (showCancel) {
                         Box(
                             modifier = Modifier

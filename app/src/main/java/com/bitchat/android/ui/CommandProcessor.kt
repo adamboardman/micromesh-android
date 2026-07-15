@@ -59,21 +59,19 @@ class CommandProcessor(
             val success = channelManager.joinChannel(channel, password, myPeerID)
             if (success) {
                 val systemMessage = BitchatMessage(
-                    sender = "system",
+                    senderNickname = "system",
                     content = "joined channel $channel",
                     timestamp = Date(),
-                    isRelay = false
                 )
-                messageManager.addMessage(systemMessage)
+                messageManager.addMessage(systemMessage, null)
             }
         } else {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "usage: /join <channel>",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
         }
     }
     
@@ -100,31 +98,28 @@ class CommandProcessor(
                         }
                     } else {
                         val systemMessage = BitchatMessage(
-                            sender = "system",
+                            senderNickname = "system",
                             content = "started private chat with $targetName",
                             timestamp = Date(),
-                            isRelay = false
                         )
-                        messageManager.addMessage(systemMessage)
+                        messageManager.addMessage(systemMessage, null)
                     }
                 }
             } else {
                 val systemMessage = BitchatMessage(
-                    sender = "system",
+                    senderNickname = "system",
                     content = "user '$targetName' not found. they may be offline or using a different nickname.",
                     timestamp = Date(),
-                    isRelay = false
                 )
-                messageManager.addMessage(systemMessage)
+                messageManager.addMessage(systemMessage, null)
             }
         } else {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "usage: /msg <nickname> [message]",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
         }
     }
     
@@ -170,16 +165,15 @@ class CommandProcessor(
         }
         
         val systemMessage = BitchatMessage(
-            sender = "system",
+            senderNickname = "system",
             content = if (peerList.isEmpty()) {
                 "no one else is around right now."
             } else {
                 "$contextDescription: $peerList"
             },
             timestamp = Date(),
-            isRelay = false
         )
-        messageManager.addMessage(systemMessage)
+        messageManager.addMessage(systemMessage, null)
     }
     
     private fun handleClearCommand() {
@@ -206,22 +200,20 @@ class CommandProcessor(
 
         if (currentChannel == null) {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "you must be in a channel to set a password.",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
             return
         }
 
         if (parts.size == 2){
             if(!channelManager.isChannelCreator(channel = currentChannel, peerID = peerID)){
                 val systemMessage = BitchatMessage(
-                    sender = "system",
+                    senderNickname = "system",
                     content = "you must be the channel creator to set a password.",
                     timestamp = Date(),
-                    isRelay = false
                 )
                 channelManager.addChannelMessage(currentChannel,systemMessage,null)
                 return
@@ -229,19 +221,17 @@ class CommandProcessor(
             val newPassword = parts[1]
             channelManager.setChannelPassword(currentChannel, newPassword)
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "password changed for channel $currentChannel",
                 timestamp = Date(),
-                isRelay = false
             )
             channelManager.addChannelMessage(currentChannel,systemMessage,null)
         }
         else{
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "usage: /pass <password>",
                 timestamp = Date(),
-                isRelay = false
             )
             channelManager.addChannelMessage(currentChannel,systemMessage,null)
         }
@@ -255,12 +245,11 @@ class CommandProcessor(
             // List blocked users
             val blockedInfo = privateChatManager.listBlockedUsers()
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = blockedInfo,
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
         }
     }
     
@@ -270,12 +259,11 @@ class CommandProcessor(
             privateChatManager.unblockPeerByNickname(targetName, meshService)
         } else {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "usage: /unblock <nickname>",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
         }
     }
     
@@ -313,11 +301,9 @@ class CommandProcessor(
                 onSendMessage(actionMessage, emptyList(), null)
             } else {
                 val message = BitchatMessage(
-                    sender = state.getNicknameValue() ?: myPeerID,
+                    senderNickname = state.getNicknameValue() ?: myPeerID,
                     content = actionMessage,
                     timestamp = Date(),
-                    isRelay = false,
-                    senderPeerID = myPeerID,
                     channel = state.getCurrentChannelValue()
                 )
                 
@@ -325,18 +311,17 @@ class CommandProcessor(
                     channelManager.addChannelMessage(state.getCurrentChannelValue()!!, message, myPeerID)
                     onSendMessage(actionMessage, emptyList(), state.getCurrentChannelValue())
                 } else {
-                    messageManager.addMessage(message)
+                    messageManager.addMessage(message, myPeerID)
                     onSendMessage(actionMessage, emptyList(), null)
                 }
             }
         } else {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "usage: /${parts[0].removePrefix("/")} <nickname>",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
         }
     }
     
@@ -349,22 +334,20 @@ class CommandProcessor(
         }
         
         val systemMessage = BitchatMessage(
-            sender = "system",
+            senderNickname = "system",
             content = channelList,
             timestamp = Date(),
-            isRelay = false
         )
-        messageManager.addMessage(systemMessage)
+        messageManager.addMessage(systemMessage, null)
     }
     
     private fun handleUnknownCommand(cmd: String) {
         val systemMessage = BitchatMessage(
-            sender = "system",
+            senderNickname = "system",
             content = "unknown command: $cmd. type / to see available commands.",
             timestamp = Date(),
-            isRelay = false
         )
-        messageManager.addMessage(systemMessage)
+        messageManager.addMessage(systemMessage, null)
     }
     
     // MARK: - Command Autocomplete

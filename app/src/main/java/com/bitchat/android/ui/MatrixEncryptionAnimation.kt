@@ -83,7 +83,8 @@ fun MessageWithMatrixAnimation(
     onNicknameClick: ((String) -> Unit)?,
     onMessageLongPress: ((com.bitchat.android.model.BitchatMessage) -> Unit)?,
     onImageClick: ((String, List<String>, Int) -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    peerID: String?,
 ) {
     val isAnimating = shouldAnimateMessage(message.id)
     
@@ -95,7 +96,8 @@ fun MessageWithMatrixAnimation(
             meshService = meshService,
             colorScheme = colorScheme,
             timeFormatter = timeFormatter,
-            modifier = modifier
+            modifier = modifier,
+            peerID = peerID,
         )
     } else {
         // After animation: Show complete normal message using existing formatter
@@ -104,7 +106,8 @@ fun MessageWithMatrixAnimation(
             currentUserNickname = currentUserNickname,
             meshService = meshService,
             colorScheme = colorScheme,
-            timeFormatter = timeFormatter
+            timeFormatter = timeFormatter,
+            peerID = peerID,
         )
         
         Text(
@@ -127,7 +130,8 @@ private fun AnimatedMessageDisplay(
     meshService: com.bitchat.android.mesh.MeshService,
     colorScheme: androidx.compose.material3.ColorScheme,
     timeFormatter: java.text.SimpleDateFormat,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    peerID: String?,
 ) {
     // Get the animated content text
     var animatedContent by remember(message.content) { mutableStateOf(message.content) }
@@ -208,7 +212,8 @@ private fun AnimatedMessageDisplay(
             message = animatedMessage,
             currentUserNickname = currentUserNickname,
             meshService = meshService,
-            colorScheme = colorScheme
+            colorScheme = colorScheme,
+            peerID = peerID,
         )
     } else {
         formatMessageAsAnnotatedString(
@@ -216,7 +221,8 @@ private fun AnimatedMessageDisplay(
             currentUserNickname = currentUserNickname,
             meshService = meshService,
             colorScheme = colorScheme,
-            timeFormatter = timeFormatter
+            timeFormatter = timeFormatter,
+            peerID = peerID,
         )
     }
     
@@ -242,7 +248,8 @@ private fun formatMessageAsAnnotatedStringWithoutTimestamp(
     message: com.bitchat.android.model.BitchatMessage,
     currentUserNickname: String,
     meshService: com.bitchat.android.mesh.MeshService,
-    colorScheme: androidx.compose.material3.ColorScheme
+    colorScheme: androidx.compose.material3.ColorScheme,
+    peerID: String?,
 ): AnnotatedString {
     // Get the full formatted text first
     val timeFormatter = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
@@ -251,7 +258,8 @@ private fun formatMessageAsAnnotatedStringWithoutTimestamp(
         currentUserNickname = currentUserNickname,
         meshService = meshService,
         colorScheme = colorScheme,
-        timeFormatter = timeFormatter
+        timeFormatter = timeFormatter,
+        peerID = peerID
     )
     
     // Find and remove the timestamp and PoW badge at the end

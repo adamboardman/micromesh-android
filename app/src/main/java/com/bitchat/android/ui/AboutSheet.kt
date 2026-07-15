@@ -200,7 +200,8 @@ fun AboutSheet(
     isPresented: Boolean,
     onDismiss: () -> Unit,
     onShowDebug: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    meshService: BluetoothMeshService
 ) {
     val context = LocalContext.current
     

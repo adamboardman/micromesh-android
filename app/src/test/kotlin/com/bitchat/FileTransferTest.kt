@@ -144,32 +144,26 @@ class FileTransferTest {
         // Given: Different file types
         val imageMessage = BitchatMessage(
             id = "test1",
-            sender = "alice",
-            senderPeerID = "12345678",
+            senderNickname = "alice",
             content = "/data/user/0/com.bitchat.android/files/images/photo.jpg",
             type = BitchatMessageType.Image,
             timestamp = Date(System.currentTimeMillis()),
-            isPrivate = false
         )
 
         val audioMessage = BitchatMessage(
             id = "test2",
-            sender = "bob",
-            senderPeerID = "87654321",
+            senderNickname = "bob",
             content = "/data/user/0/com.bitchat.android/files/audio/voice.amr",
             type = BitchatMessageType.Audio,
             timestamp = Date(System.currentTimeMillis()),
-            isPrivate = false
         )
 
         val fileMessage = BitchatMessage(
             id = "test3",
-            sender = "charlie",
-            senderPeerID = "11223344",
+            senderNickname = "charlie",
             content = "/data/user/0/com.bitchat.android/files/documents/document.pdf",
             type = BitchatMessageType.File,
             timestamp = Date(System.currentTimeMillis()),
-            isPrivate = false
         )
 
         // When: Converting to display format (this would be done in MessageMutable)
@@ -193,12 +187,10 @@ class FileTransferTest {
         // Given: Incoming image message
         val imageMessage = BitchatMessage(
             id = "test1",
-            sender = "alice",
-            senderPeerID = "1234abcd",
+            senderNickname = "alice",
             content = "📷 sent an image", // This would be the result of the utility function
             type = BitchatMessageType.Image,
             timestamp = Date(System.currentTimeMillis()),
-            isPrivate = true
         )
 
         // When: Building preview (this would call NotificationTextUtils.buildPrivateMessagePreview)

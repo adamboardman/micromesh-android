@@ -1,7 +1,7 @@
 package com.bitchat.android.model
 
 import android.os.Parcelable
-import com.google.gson.GsonBuilder
+import com.bitchat.android.protocol.BinaryProtocol
 import kotlinx.parcelize.Parcelize
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -50,259 +50,143 @@ sealed class DeliveryStatus : Parcelable {
 }
 
 /**
- * BitchatMessage - 100% compatible with iOS version
+ * BitchatMessage
  */
 @Parcelize
 data class BitchatMessage(
     val id: String = UUID.randomUUID().toString().uppercase(),
-    val sender: String,
+    val senderNickname: String? = null,
     val content: String,
     val type: BitchatMessageType = BitchatMessageType.Message,
-    val timestamp: Date,
-    val isRelay: Boolean = false,
-    val originalSender: String? = null,
-    val isPrivate: Boolean = false,
-    val recipientNickname: String? = null,
-    val senderPeerID: String? = null,
-    val mentions: List<String>? = null,
+    val timestamp: Date, //we don't include this in the payload but expect it to be set from the packet
     val channel: String? = null,
-    val encryptedContent: ByteArray? = null,
-    val isEncrypted: Boolean = false,
     val deliveryStatus: DeliveryStatus? = null,
     val powDifficulty: Int? = null
 ) : Parcelable {
+
+    private enum class TLVType(val value: UByte) {
+        TLV_MESSAGE_ID(0x00u),
+        TLV_MESSAGE_CONTENT(0x01u),
+
+        // bump up values to avoid clash with upstream bitchat - if they adopt compatible concepts then we can migrate and use their types
+        TLV_MESSAGE_SENDER_NICKNAME(0x7du), // it's useful for a channel to have direct access to the name associated with the message
+        TLV_MESSAGE_CHANNEL_CONTENT(0x7eu), // to avoid regular bitchat clients showing our channel messages to everyone we omit the regular content
+        TLV_MESSAGE_CHANNEL(0x7fu); // the #channel name
+
+        companion object {
+            fun fromValue(value: UByte): BitchatMessage.TLVType? {
+                return BitchatMessage.TLVType.values().find { it.value == value }
+            }
+        }
+    }
 
     /**
      * Convert message to binary payload format - exactly same as iOS version
      */
     fun toBinaryPayload(): ByteArray? {
-        try {
-            val buffer = ByteBuffer.allocate(4096).apply { order(ByteOrder.BIG_ENDIAN) }
+        val result = mutableListOf<Byte>()
 
-            // Message format:
-            // - Flags: 1 byte (bit flags for optional fields)
-            // - Timestamp: 8 bytes (milliseconds since epoch, big-endian)
-            // - ID length: 1 byte + ID data
-            // - Sender length: 1 byte + sender data
-            // - Content length: 2 bytes + content data (or encrypted content)
-            // Optional fields based on flags...
+        val idData = id.toByteArray()
+        if (idData.size > 255) return null
+        result.add(TLVType.TLV_MESSAGE_ID.value.toByte())
+        result.add(idData.size.toByte())
+        result.addAll(idData.toList())
 
-            var flags: UByte = 0u
-            if (isRelay) flags = flags or 0x01u
-            if (isPrivate) flags = flags or 0x02u
-            if (originalSender != null) flags = flags or 0x04u
-            if (recipientNickname != null) flags = flags or 0x08u
-            if (senderPeerID != null) flags = flags or 0x10u
-            if (mentions != null && mentions.isNotEmpty()) flags = flags or 0x20u
-            if (channel != null) flags = flags or 0x40u
-            if (isEncrypted) flags = flags or 0x80u
-
-            buffer.put(flags.toByte())
-
-            // Timestamp (in milliseconds, 8 bytes big-endian)
-            val timestampMillis = timestamp.time
-            buffer.putLong(timestampMillis)
-
-            // ID
-            val idBytes = id.toByteArray(Charsets.UTF_8)
-            buffer.put(minOf(idBytes.size, 255).toByte())
-            buffer.put(idBytes.take(255).toByteArray())
-
-            // Sender
-            val senderBytes = sender.toByteArray(Charsets.UTF_8)
-            buffer.put(minOf(senderBytes.size, 255).toByte())
-            buffer.put(senderBytes.take(255).toByteArray())
-
-            // Content or encrypted content
-            if (isEncrypted && encryptedContent != null) {
-                val length = minOf(encryptedContent.size, 65535)
-                buffer.putShort(length.toShort())
-                buffer.put(encryptedContent.take(length).toByteArray())
-            } else {
-                val contentBytes = content.toByteArray(Charsets.UTF_8)
-                val length = minOf(contentBytes.size, 65535)
-                buffer.putShort(length.toShort())
-                buffer.put(contentBytes.take(length).toByteArray())
-            }
-
-            // Optional fields
-            originalSender?.let { origSender ->
-                val origBytes = origSender.toByteArray(Charsets.UTF_8)
-                buffer.put(minOf(origBytes.size, 255).toByte())
-                buffer.put(origBytes.take(255).toByteArray())
-            }
-
-            recipientNickname?.let { recipient ->
-                val recipBytes = recipient.toByteArray(Charsets.UTF_8)
-                buffer.put(minOf(recipBytes.size, 255).toByte())
-                buffer.put(recipBytes.take(255).toByteArray())
-            }
-
-            senderPeerID?.let { peerID ->
-                val peerBytes = peerID.toByteArray(Charsets.UTF_8)
-                buffer.put(minOf(peerBytes.size, 255).toByte())
-                buffer.put(peerBytes.take(255).toByteArray())
-            }
-
-            // Mentions array
-            mentions?.let { mentionList ->
-                buffer.put(minOf(mentionList.size, 255).toByte())
-                mentionList.take(255).forEach { mention ->
-                    val mentionBytes = mention.toByteArray(Charsets.UTF_8)
-                    buffer.put(minOf(mentionBytes.size, 255).toByte())
-                    buffer.put(mentionBytes.take(255).toByteArray())
-                }
-            }
-
-            // Channel hashtag
-            channel?.let { channelName ->
-                val channelBytes = channelName.toByteArray(Charsets.UTF_8)
-                buffer.put(minOf(channelBytes.size, 255).toByte())
-                buffer.put(channelBytes.take(255).toByteArray())
-            }
-
-            val result = ByteArray(buffer.position())
-            buffer.rewind()
-            buffer.get(result)
-            return result
-
-        } catch (e: Exception) {
-            return null
+        val contentData = content.toByteArray(Charsets.UTF_8)
+        if (contentData.size > 255) return null
+        if (channel != null) {
+            val channelData = channel.toByteArray(Charsets.UTF_8)
+            if (channelData.size > 255) return null
+            result.add(TLVType.TLV_MESSAGE_CHANNEL.value.toByte())
+            result.add(channelData.size.toByte())
+            result.addAll(channelData.toList())
+            result.add(TLVType.TLV_MESSAGE_CHANNEL_CONTENT.value.toByte())
+        } else {
+            result.add(TLVType.TLV_MESSAGE_CONTENT.value.toByte())
         }
+        result.add(contentData.size.toByte())
+        result.addAll(contentData.toList())
+
+        if (senderNickname != null) {
+            // TLV for nickname
+            val nicknameData = senderNickname.toByteArray(Charsets.UTF_8)
+            if (nicknameData.size > 255) return null
+            result.add(TLVType.TLV_MESSAGE_SENDER_NICKNAME.value.toByte())
+            result.add(nicknameData.size.toByte())
+            result.addAll(nicknameData.toList())
+        }
+
+        return result.toByteArray()
     }
 
     companion object {
         /**
          * Parse message from binary payload - exactly same logic as iOS version
          */
-        fun fromBinaryPayload(data: ByteArray): BitchatMessage? {
-            try {
-                if (data.size < 13) return null
+        fun fromBinaryPayload(data: ByteArray, timestamp: ULong): BitchatMessage? {
+            // Create defensive copy
+            val dataCopy = data.copyOf()
 
-                val buffer = ByteBuffer.wrap(data).apply { order(ByteOrder.BIG_ENDIAN) }
+            var offset = 0
+            var messageId: String? = null
+            var messageContent: String? = null
+            var messageSenderNickname: String? = null
+            var messageChannel: String? = null
 
-                // Flags
-                val flags = buffer.get().toUByte()
-                val isRelay = (flags and 0x01u) != 0u.toUByte()
-                val isPrivate = (flags and 0x02u) != 0u.toUByte()
-                val hasOriginalSender = (flags and 0x04u) != 0u.toUByte()
-                val hasRecipientNickname = (flags and 0x08u) != 0u.toUByte()
-                val hasSenderPeerID = (flags and 0x10u) != 0u.toUByte()
-                val hasMentions = (flags and 0x20u) != 0u.toUByte()
-                val hasChannel = (flags and 0x40u) != 0u.toUByte()
-                val isEncrypted = (flags and 0x80u) != 0u.toUByte()
+            while (offset + 2 <= dataCopy.size) {
+                // Read TLV type
+                val typeValue = dataCopy[offset].toUByte()
+                val type = TLVType.fromValue(typeValue)
+                offset += 1
 
-                // Timestamp
-                val timestampMillis = buffer.getLong()
-                val timestamp = Date(timestampMillis)
+                // Read TLV length
+                val length = dataCopy[offset].toUByte().toInt()
+                offset += 1
 
-                // ID
-                val idLength = buffer.get().toInt() and 0xFF
-                if (buffer.remaining() < idLength) return null
-                val idBytes = ByteArray(idLength)
-                buffer.get(idBytes)
-                val id = String(idBytes, Charsets.UTF_8)
+                // Check bounds
+                if (offset + length > dataCopy.size) return null
 
-                // Sender
-                val senderLength = buffer.get().toInt() and 0xFF
-                if (buffer.remaining() < senderLength) return null
-                val senderBytes = ByteArray(senderLength)
-                buffer.get(senderBytes)
-                val sender = String(senderBytes, Charsets.UTF_8)
+                // Read TLV value
+                val value = dataCopy.sliceArray(offset until offset + length)
+                offset += length
 
-                // Content
-                val contentLength = buffer.getShort().toInt() and 0xFFFF
-                if (buffer.remaining() < contentLength) return null
-
-                val content: String
-                val encryptedContent: ByteArray?
-
-                if (isEncrypted) {
-                    val encryptedBytes = ByteArray(contentLength)
-                    buffer.get(encryptedBytes)
-                    encryptedContent = encryptedBytes
-                    content = "" // Empty placeholder
-                } else {
-                    val contentBytes = ByteArray(contentLength)
-                    buffer.get(contentBytes)
-                    content = String(contentBytes, Charsets.UTF_8)
-                    encryptedContent = null
-                }
-
-                // Optional fields
-                val originalSender = if (hasOriginalSender && buffer.hasRemaining()) {
-                    val length = buffer.get().toInt() and 0xFF
-                    if (buffer.remaining() >= length) {
-                        val bytes = ByteArray(length)
-                        buffer.get(bytes)
-                        String(bytes, Charsets.UTF_8)
-                    } else null
-                } else null
-
-                val recipientNickname = if (hasRecipientNickname && buffer.hasRemaining()) {
-                    val length = buffer.get().toInt() and 0xFF
-                    if (buffer.remaining() >= length) {
-                        val bytes = ByteArray(length)
-                        buffer.get(bytes)
-                        String(bytes, Charsets.UTF_8)
-                    } else null
-                } else null
-
-                val senderPeerID = if (hasSenderPeerID && buffer.hasRemaining()) {
-                    val length = buffer.get().toInt() and 0xFF
-                    if (buffer.remaining() >= length) {
-                        val bytes = ByteArray(length)
-                        buffer.get(bytes)
-                        String(bytes, Charsets.UTF_8)
-                    } else null
-                } else null
-
-                // Mentions array
-                val mentions = if (hasMentions && buffer.hasRemaining()) {
-                    val mentionCount = buffer.get().toInt() and 0xFF
-                    val mentionList = mutableListOf<String>()
-                    repeat(mentionCount) {
-                        if (buffer.hasRemaining()) {
-                            val length = buffer.get().toInt() and 0xFF
-                            if (buffer.remaining() >= length) {
-                                val bytes = ByteArray(length)
-                                buffer.get(bytes)
-                                mentionList.add(String(bytes, Charsets.UTF_8))
-                            }
-                        }
+                // Process known TLV types, skip unknown ones for forward compatibility
+                when (type) {
+                    TLVType.TLV_MESSAGE_ID -> {
+                        messageId = String(value, Charsets.UTF_8)
                     }
-                    if (mentionList.isNotEmpty()) mentionList else null
-                } else null
+                    TLVType.TLV_MESSAGE_CONTENT -> {
+                        messageContent = String(value, Charsets.UTF_8)
+                    }
+                    TLVType.TLV_MESSAGE_SENDER_NICKNAME -> {
+                        messageSenderNickname = String(value, Charsets.UTF_8)
+                    }
+                    TLVType.TLV_MESSAGE_CHANNEL -> {
+                        messageChannel = String(value, Charsets.UTF_8)
+                    }
+                    TLVType.TLV_MESSAGE_CHANNEL_CONTENT -> {
+                        // We assume that there will never be content and channel content in the same message
+                        messageContent = String(value, Charsets.UTF_8)
+                    }
+                    null -> {
+                        // Unknown TLV; skip (tolerant decoder for forward compatibility)
+                        continue
+                    }
+                }
+            }
 
-                // Channel
-                val channel = if (hasChannel && buffer.hasRemaining()) {
-                    val length = buffer.get().toInt() and 0xFF
-                    if (buffer.remaining() >= length) {
-                        val bytes = ByteArray(length)
-                        buffer.get(bytes)
-                        String(bytes, Charsets.UTF_8)
-                    } else null
-                } else null
-
-                return BitchatMessage(
-                    id = id,
-                    sender = sender,
-                    content = content,
+            // Only id and content is required
+            return if (messageId != null && messageContent != null) {
+                BitchatMessage(
+                    id = messageId,
+                    content = messageContent,
                     type = BitchatMessageType.Message,
-                    timestamp = timestamp,
-                    isRelay = isRelay,
-                    originalSender = originalSender,
-                    isPrivate = isPrivate,
-                    recipientNickname = recipientNickname,
-                    senderPeerID = senderPeerID,
-                    mentions = mentions,
-                    channel = channel,
-                    encryptedContent = encryptedContent,
-                    isEncrypted = isEncrypted
+                    senderNickname = messageSenderNickname,
+                    timestamp = java.util.Date(timestamp.toLong()),
+                    channel = messageChannel,
                 )
-
-            } catch (e: Exception) {
-                return null
+            } else {
+                null
             }
         }
     }
@@ -314,22 +198,10 @@ data class BitchatMessage(
         other as BitchatMessage
 
         if (id != other.id) return false
-        if (sender != other.sender) return false
+        if (senderNickname != other.senderNickname) return false
         if (content != other.content) return false
         if (type != other.type) return false
-        if (timestamp != other.timestamp) return false
-        if (isRelay != other.isRelay) return false
-        if (originalSender != other.originalSender) return false
-        if (isPrivate != other.isPrivate) return false
-        if (recipientNickname != other.recipientNickname) return false
-        if (senderPeerID != other.senderPeerID) return false
-        if (mentions != other.mentions) return false
         if (channel != other.channel) return false
-        if (encryptedContent != null) {
-            if (other.encryptedContent == null) return false
-            if (!encryptedContent.contentEquals(other.encryptedContent)) return false
-        } else if (other.encryptedContent != null) return false
-        if (isEncrypted != other.isEncrypted) return false
         if (deliveryStatus != other.deliveryStatus) return false
 
         return true
@@ -337,19 +209,10 @@ data class BitchatMessage(
 
     override fun hashCode(): Int {
         var result = id.hashCode()
-        result = 31 * result + sender.hashCode()
+        result = 31 * result + senderNickname.hashCode()
         result = 31 * result + content.hashCode()
         result = 31 * result + type.hashCode()
-        result = 31 * result + timestamp.hashCode()
-        result = 31 * result + isRelay.hashCode()
-        result = 31 * result + (originalSender?.hashCode() ?: 0)
-        result = 31 * result + isPrivate.hashCode()
-        result = 31 * result + (recipientNickname?.hashCode() ?: 0)
-        result = 31 * result + (senderPeerID?.hashCode() ?: 0)
-        result = 31 * result + (mentions?.hashCode() ?: 0)
         result = 31 * result + (channel?.hashCode() ?: 0)
-        result = 31 * result + (encryptedContent?.contentHashCode() ?: 0)
-        result = 31 * result + isEncrypted.hashCode()
         result = 31 * result + (deliveryStatus?.hashCode() ?: 0)
         return result
     }

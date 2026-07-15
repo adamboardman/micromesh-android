@@ -18,27 +18,36 @@ class MessageManager(private val state: ChatState) {
     
     // MARK: - Public Message Management
     
-    fun addMessage(message: BitchatMessage) {
+    fun addMessage(message: BitchatMessage, peerID: String?) {
         val currentMessages = state.getMessagesValue().toMutableList()
         currentMessages.add(message)
         state.setMessages(currentMessages)
+        if (peerID != null) {
+            val currentMessagePeerIDs = state.getMessagePeerIDsValue().toMutableMap()
+            currentMessagePeerIDs[message.id] = peerID
+            state.setMessagePeerIDs(currentMessagePeerIDs)
+        }
         // Reflect into process-wide store so snapshot replacements don't drop local outgoing messages
         try { com.bitchat.android.services.AppStateStore.addPublicMessage(message) } catch (_: Exception) { }
+    }
+
+    fun getMessagePeerIDs(): Map<String, String> {
+        return state.getMessagePeerIDsValue()
     }
 
     // Log a system message into the main chat (visible to user)
     fun addSystemMessage(text: String) {
         val sys = BitchatMessage(
-            sender = "system",
+            senderNickname = "system",
             content = text,
             timestamp = Date(),
-            isRelay = false
         )
-        addMessage(sys)
+        addMessage(sys, null)
     }
     
     fun clearMessages() {
         state.setMessages(emptyList())
+        state.setMessagePeerIDs(emptyMap())
         state.setChannelMessages(emptyMap())
     }
     
@@ -113,7 +122,7 @@ class MessageManager(private val state: ChatState) {
         try { com.bitchat.android.services.AppStateStore.addPrivateMessage(peerID, message) } catch (_: Exception) { }
         
         // Mark as unread if not currently viewing this chat
-        if (state.getSelectedPrivateChatPeerValue() != peerID && message.sender != state.getNicknameValue()) {
+        if (state.getSelectedPrivateChatPeerValue() != peerID && message.senderNickname != state.getNicknameValue()) {
             val currentUnread = state.getUnreadPrivateMessagesValue().toMutableSet()
             currentUnread.add(peerID)
             state.setUnreadPrivateMessages(currentUnread)
@@ -159,8 +168,8 @@ class MessageManager(private val state: ChatState) {
     /**
      * Generate a unique key for message deduplication
      */
-    fun generateMessageKey(message: BitchatMessage): String {
-        val senderKey = message.senderPeerID ?: message.sender
+    fun generateMessageKey(message: BitchatMessage, peerID: String?): String {
+        val senderKey = peerID ?: message.senderNickname
         val contentHash = message.content.hashCode()
         return "$senderKey-${message.timestamp.time}-$contentHash"
     }
@@ -293,6 +302,9 @@ class MessageManager(private val state: ChatState) {
                 list.removeAt(idx)
                 state.setMessages(list)
             }
+            var peerIDList = state.getMessagePeerIDsValue().toMutableMap()
+            peerIDList.remove(messageID)
+            state.setMessagePeerIDs(peerIDList)
         }
         // Private chats
         run {
@@ -351,6 +363,7 @@ class MessageManager(private val state: ChatState) {
     
     fun clearAllMessages() {
         state.setMessages(emptyList())
+        state.setMessagePeerIDs(emptyMap())
         state.setPrivateChats(emptyMap())
         state.setChannelMessages(emptyMap())
         state.setUnreadPrivateMessages(emptySet())

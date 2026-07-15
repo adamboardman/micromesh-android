@@ -188,14 +188,10 @@ class MediaSendingManager(
 
         val msg = BitchatMessage(
             id = java.util.UUID.randomUUID().toString().uppercase(), // Generate unique ID for each message
-            sender = state.getNicknameValue() ?: "me",
+            senderNickname = state.getNicknameValue() ?: "me",
             content = filePath,
             type = messageType,
             timestamp = Date(),
-            isRelay = false,
-            isPrivate = true,
-            recipientNickname = try { meshService.getPeerNicknames()[toPeerID] } catch (_: Exception) { null },
-            senderPeerID = meshService.myPeerID
         )
         
         messageManager.addPrivateMessage(toPeerID, msg)
@@ -239,19 +235,17 @@ class MediaSendingManager(
 
         val message = BitchatMessage(
             id = java.util.UUID.randomUUID().toString().uppercase(), // Generate unique ID for each message
-            sender = state.getNicknameValue() ?: meshService.myPeerID,
+            senderNickname = state.getNicknameValue() ?: meshService.myPeerID,
             content = filePath,
             type = messageType,
             timestamp = Date(),
-            isRelay = false,
-            senderPeerID = meshService.myPeerID,
             channel = channelOrNull
         )
         
         if (!channelOrNull.isNullOrBlank()) {
             channelManager.addChannelMessage(channelOrNull, message, meshService.myPeerID)
         } else {
-            messageManager.addMessage(message)
+            messageManager.addMessage(message, meshService.myPeerID)
         }
         
         synchronized(transferMessageMap) {

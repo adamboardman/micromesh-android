@@ -59,6 +59,8 @@ fun MessagesList(
     messages: List<BitchatMessage>,
     currentUserNickname: String,
     meshService: MeshService,
+    messagePeerIDs: Map<String, String>,
+    isPrivate: Boolean,
     modifier: Modifier = Modifier,
     forceScrollToBottom: Boolean = false,
     onScrolledUpChanged: ((Boolean) -> Unit)? = null,
@@ -126,7 +128,9 @@ fun MessagesList(
                     onNicknameClick = onNicknameClick,
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
-                    onImageClick = onImageClick
+                    onImageClick = onImageClick,
+                    peerID = messagePeerIDs[message.id],
+                    isPrivate = isPrivate,
                 )
         }
     }
@@ -138,6 +142,8 @@ fun MessageItem(
     message: BitchatMessage,
     currentUserNickname: String,
     meshService: MeshService,
+    peerID: String?,
+    isPrivate: Boolean?,
     messages: List<BitchatMessage> = emptyList(),
     onNicknameClick: ((String) -> Unit)? = null,
     onMessageLongPress: ((BitchatMessage) -> Unit)? = null,
@@ -158,7 +164,7 @@ fun MessageItem(
                 verticalAlignment = Alignment.Top
             ) {
                 // Provide a small end padding for own private messages so overlay doesn't cover text
-                val endPad = if (message.isPrivate && message.sender == currentUserNickname) 16.dp else 0.dp
+                val endPad = if (isPrivate?:false && message.senderNickname == currentUserNickname) 16.dp else 0.dp
                 // Create a custom layout that combines selectable text with clickable nickname areas
                 MessageTextWithClickableNicknames(
                     message = message,
@@ -173,12 +179,13 @@ fun MessageItem(
                     onImageClick = onImageClick,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(end = endPad)
+                        .padding(end = endPad),
+                    peerID = peerID,
                 )
             }
 
             // Delivery status for private messages (overlay, non-displacing)
-            if (message.isPrivate && message.sender == currentUserNickname) {
+            if (isPrivate == true && message.senderNickname == currentUserNickname) {
                 message.deliveryStatus?.let { status ->
                     Box(
                         modifier = Modifier
@@ -208,7 +215,8 @@ fun MessageItem(
         onMessageLongPress: ((BitchatMessage) -> Unit)?,
         onCancelTransfer: ((BitchatMessage) -> Unit)?,
         onImageClick: ((String, List<String>, Int) -> Unit)?,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        peerID: String?,
     ) {
     // Image special rendering
     if (message.type == BitchatMessageType.Image) {
@@ -223,7 +231,8 @@ fun MessageItem(
             onMessageLongPress = onMessageLongPress,
             onCancelTransfer = onCancelTransfer,
             onImageClick = onImageClick,
-            modifier = modifier
+            modifier = modifier,
+            peerID = peerID,
         )
         return
     }
@@ -239,7 +248,8 @@ fun MessageItem(
             onNicknameClick = onNicknameClick,
             onMessageLongPress = onMessageLongPress,
             onCancelTransfer = onCancelTransfer,
-            modifier = modifier
+            modifier = modifier,
+            peerID = peerID,
         )
         return
     }
@@ -263,7 +273,8 @@ fun MessageItem(
                 currentUserNickname = currentUserNickname,
                 meshService = meshService,
                 colorScheme = colorScheme,
-                timeFormatter = timeFormatter
+                timeFormatter = timeFormatter,
+                peerID = peerID,
             )
             val haptic = LocalHapticFeedback.current
             var headerLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -323,7 +334,7 @@ fun MessageItem(
                         }
 
                         // Cancel button overlay during sending
-                        val showCancel = message.sender == currentUserNickname && (message.deliveryStatus is DeliveryStatus.PartiallyDelivered)
+                        val showCancel = message.senderNickname == currentUserNickname && (message.deliveryStatus is DeliveryStatus.PartiallyDelivered)
                         if (showCancel) {
                             Box(
                                 modifier = Modifier
@@ -362,7 +373,8 @@ fun MessageItem(
             onNicknameClick = onNicknameClick,
             onMessageLongPress = onMessageLongPress,
             onImageClick = onImageClick,
-            modifier = modifier
+            modifier = modifier,
+            peerID = peerID,
         )
     } else {
         // Normal message display
@@ -371,13 +383,14 @@ fun MessageItem(
             currentUserNickname = currentUserNickname,
             meshService = meshService,
             colorScheme = colorScheme,
-            timeFormatter = timeFormatter
+            timeFormatter = timeFormatter,
+            peerID = peerID,
         )
         
         // Check if this message was sent by self to avoid click interactions on own nickname
-        val isSelf = message.senderPeerID == meshService.myPeerID || 
-                     message.sender == currentUserNickname ||
-                     message.sender.startsWith("$currentUserNickname#")
+        val isSelf = peerID == meshService.myPeerID ||
+                     message.senderNickname == currentUserNickname ||
+                     message.senderNickname != null && message.senderNickname.startsWith("$currentUserNickname#")
         
         val haptic = LocalHapticFeedback.current
         val context = LocalContext.current

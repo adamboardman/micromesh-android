@@ -46,12 +46,11 @@ class PrivateChatManager(
         if (isPeerBlocked(peerID)) {
             val peerNickname = getPeerNickname(peerID, meshService)
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "cannot start chat with $peerNickname: user is blocked.",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
             return false
         }
 
@@ -72,7 +71,7 @@ class PrivateChatManager(
         messageManager.initializePrivateChat(peerID)
 
         // Send read receipts for all unread messages from this peer
-        sendReadReceiptsForPeer(peerID, meshService)
+        sendReadReceiptsForPeer(peerID, meshService, messageManager.getMessagePeerIDs())
 
         return true
     }
@@ -91,23 +90,18 @@ class PrivateChatManager(
     ): Boolean {
         if (isPeerBlocked(peerID)) {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "cannot send message to $recipientNickname: user is blocked.",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
             return false
         }
 
         val message = BitchatMessage(
-            sender = senderNickname ?: myPeerID,
+            senderNickname = senderNickname ?: "anon",
             content = content,
             timestamp = Date(),
-            isRelay = false,
-            isPrivate = true,
-            recipientNickname = recipientNickname,
-            senderPeerID = myPeerID,
             deliveryStatus = DeliveryStatus.Sending
         )
 
@@ -195,12 +189,11 @@ class PrivateChatManager(
 
             val peerNickname = getPeerNickname(peerID, meshService)
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "blocked user $peerNickname",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
 
             // End private chat if currently in one with this peer
             if (state.getSelectedPrivateChatPeerValue() == peerID) {
@@ -219,12 +212,11 @@ class PrivateChatManager(
 
             val peerNickname = getPeerNickname(peerID, meshService)
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "unblocked user $peerNickname",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
             return true
         }
         return false
@@ -237,12 +229,11 @@ class PrivateChatManager(
             return blockPeer(peerID, meshService)
         } else {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "user '$targetName' not found",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
             return false
         }
     }
@@ -256,22 +247,20 @@ class PrivateChatManager(
                 return unblockPeer(peerID, meshService)
             } else {
                 val systemMessage = BitchatMessage(
-                    sender = "system",
+                    senderNickname = "system",
                     content = "user '$targetName' is not blocked",
                     timestamp = Date(),
-                    isRelay = false
                 )
-                messageManager.addMessage(systemMessage)
+                messageManager.addMessage(systemMessage, null)
                 return false
             }
         } else {
             val systemMessage = BitchatMessage(
-                sender = "system",
+                senderNickname = "system",
                 content = "user '$targetName' not found",
                 timestamp = Date(),
-                isRelay = false
             )
-            messageManager.addMessage(systemMessage)
+            messageManager.addMessage(systemMessage, null)
             return false
         }
     }
@@ -287,12 +276,12 @@ class PrivateChatManager(
 
     // MARK: - Message Handling
 
-    fun handleIncomingPrivateMessage(message: BitchatMessage) {
-        handleIncomingPrivateMessage(message, suppressUnread = false)
+    fun handleIncomingPrivateMessage(message: BitchatMessage, peerID: String?) {
+        handleIncomingPrivateMessage(message, suppressUnread = false, peerID)
     }
 
-    fun handleIncomingPrivateMessage(message: BitchatMessage, suppressUnread: Boolean) {
-        val senderPeerID = message.senderPeerID
+    fun handleIncomingPrivateMessage(message: BitchatMessage, suppressUnread: Boolean, peerID: String?) {
+        val senderPeerID = peerID
         if (senderPeerID != null) {
             // Mesh-origin private message: AppStateStore updates the list; avoid double-add here.
             if (!isPeerBlocked(senderPeerID)) {
@@ -333,7 +322,7 @@ class PrivateChatManager(
      * Send read receipts for all unread messages from a specific peer
      * Called when the user focuses on a private chat
      */
-    fun sendReadReceiptsForPeer(peerID: String, meshService: MeshService) {
+    fun sendReadReceiptsForPeer(peerID: String, meshService: MeshService, messagePeerIDs: Map<String,String>) {
         // Collect candidate messages: all incoming messages from this peer in the conversation
         val chats = try { state.getPrivateChatsValue() } catch (_: Exception) { emptyMap<String, List<BitchatMessage>>() }
         val messages = chats[peerID].orEmpty()
@@ -347,7 +336,7 @@ class PrivateChatManager(
         var sentCount = 0
         messages.forEach { msg ->
             // Only for incoming messages from this peer
-            if (msg.senderPeerID == peerID) {
+            if (messagePeerIDs[msg.id] == peerID) {
                 try {
                     if (hasMesh) {
                         meshService.sendReadReceipt(msg.id, peerID, myNickname)

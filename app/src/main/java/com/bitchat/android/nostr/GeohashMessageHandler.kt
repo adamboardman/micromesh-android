@@ -90,13 +90,9 @@ class GeohashMessageHandler(
                 val hasNonce = try { NostrProofOfWork.hasNonce(event) } catch (_: Exception) { false }
                 val msg = BitchatMessage(
                     id = event.id,
-                    sender = senderName,
+                    senderNickname = senderName,
                     content = event.content,
                     timestamp = Date(event.createdAt * 1000L),
-                    isRelay = false,
-                    originalSender = repo.displayNameForNostrPubkey(pubkey),
-                    senderPeerID = "nostr:${pubkey.take(8)}",
-                    mentions = null,
                     channel = "#$subscribedGeohash",
                     powDifficulty = try {
                         if (hasNonce) NostrProofOfWork.calculateDifficulty(event.id).takeIf { it > 0 } else null

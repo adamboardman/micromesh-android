@@ -165,9 +165,8 @@ object AppStateStore {
     }
 
     private fun publicMessageKey(msg: BitchatMessage): String {
-        val sender = msg.senderPeerID ?: msg.sender
         return listOf(
-            sender,
+            msg.senderNickname,
             msg.timestamp.time.toString(),
             msg.type.name,
             msg.channel ?: "",

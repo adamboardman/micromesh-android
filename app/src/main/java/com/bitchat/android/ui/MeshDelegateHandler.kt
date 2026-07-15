@@ -24,17 +24,17 @@ class MeshDelegateHandler(
     private val getMeshService: () -> MeshService
 ) : BluetoothMeshDelegate {
 
-    override fun didReceiveMessage(message: BitchatMessage) {
+    override fun didReceiveMessage(message: BitchatMessage, peerID: String?, isPrivate: Boolean) {
         coroutineScope.launch {
             // FIXED: Deduplicate messages from dual connection paths
-            val messageKey = messageManager.generateMessageKey(message)
+            val messageKey = messageManager.generateMessageKey(message, peerID)
             if (messageManager.isMessageProcessed(messageKey)) {
                 return@launch // Duplicate message, ignore
             }
             messageManager.markMessageProcessed(messageKey)
             
             // Check if sender is blocked
-            message.senderPeerID?.let { senderPeerID ->
+            peerID?.let { senderPeerID ->
                 if (privateChatManager.isPeerBlocked(senderPeerID)) {
                     return@launch
                 }
@@ -43,19 +43,19 @@ class MeshDelegateHandler(
             // Trigger haptic feedback
             onHapticFeedback()
 
-            if (message.isPrivate) {
+            if (isPrivate) {
                 // Private message
-                privateChatManager.handleIncomingPrivateMessage(message)
+                privateChatManager.handleIncomingPrivateMessage(message, peerID)
 
                 // Reactive read receipts: if chat is focused, send immediately for this message
-                message.senderPeerID?.let { senderPeerID ->
-                    sendReadReceiptIfFocused(message)
+                peerID?.let { senderPeerID ->
+                    sendReadReceiptIfFocused(message, senderPeerID)
                 }
                 
                 // Show notification with enhanced information - now includes senderPeerID 
-                message.senderPeerID?.let { senderPeerID ->
+                peerID?.let { senderPeerID ->
                     // Use nickname if available, fall back to sender or senderPeerID
-                    val senderNickname = message.sender.takeIf { it != senderPeerID } ?: senderPeerID
+                    val senderNickname = message.senderNickname.takeIf { it != senderPeerID } ?: senderPeerID
                     val preview = NotificationTextUtils.buildPrivateMessagePreview(message)
                     notificationManager.showPrivateMessageNotification(
                         senderPeerID = senderPeerID,
@@ -84,7 +84,7 @@ class MeshDelegateHandler(
             } else {
                 // Public mesh message: AppStateStore is the source of truth; avoid double-adding to UI state
                 // Still run mention detection/notifications
-                checkAndTriggerMeshMentionNotification(message)
+                checkAndTriggerMeshMentionNotification(message, peerID)
             }
             
             // Periodic cleanup
@@ -243,7 +243,7 @@ class MeshDelegateHandler(
     /**
      * Check for mentions in mesh messages and trigger notifications
      */
-    private fun checkAndTriggerMeshMentionNotification(message: BitchatMessage) {
+    private fun checkAndTriggerMeshMentionNotification(message: BitchatMessage, peerID: String?) {
         try {
             // Get user's current nickname
             val currentNickname = state.getNicknameValue()
@@ -255,12 +255,12 @@ class MeshDelegateHandler(
             val isMention = checkForMeshMention(message.content, currentNickname)
 
             if (isMention) {
-                android.util.Log.d("MeshDelegateHandler", "🔔 Triggering mesh mention notification from ${message.sender}")
+                android.util.Log.d("MeshDelegateHandler", "🔔 Triggering mesh mention notification from ${message.senderNickname}")
 
                 notificationManager.showMeshMentionNotification(
-                    senderNickname = message.sender,
+                    senderNickname = message.senderNickname ?: "",
                     messageContent = message.content,
-                    senderPeerID = message.senderPeerID
+                    senderPeerID = peerID
                 )
             }
         } catch (e: Exception) {
@@ -287,13 +287,13 @@ class MeshDelegateHandler(
      * Uses same logic as notification system - send read receipt if user is currently
      * viewing the private chat with this sender AND app is in foreground.
      */
-    private fun sendReadReceiptIfFocused(message: BitchatMessage) {
+    private fun sendReadReceiptIfFocused(message: BitchatMessage, peerID: String) {
         // Get notification manager's focus state (mirror the notification logic)
         val isAppInBackground = notificationManager.getAppBackgroundState()
         val currentPrivateChatPeer = notificationManager.getCurrentPrivateChatPeer()
         
         // Send read receipt if user is currently focused on this specific chat
-        val senderPeerID = message.senderPeerID
+        val senderPeerID = peerID
         val shouldSendReadReceipt = !isAppInBackground && senderPeerID != null && currentPrivateChatPeer == senderPeerID
         
             if (shouldSendReadReceipt) {

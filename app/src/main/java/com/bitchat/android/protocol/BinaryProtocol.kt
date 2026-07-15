@@ -482,4 +482,49 @@ object BinaryProtocol {
             return null
         }
     }
+
+    fun readVInt32(value: ByteArray): Int = (((value[0].toULong() and 0xFFu) shl 24) or
+            ((value[1].toULong() and 0xFFu) shl 16) or
+            ((value[2].toULong() and 0xFFu) shl 8) or
+            (value[3].toULong() and 0xFFu)).toInt()
+
+    fun addTLVForUInt8(result: MutableList<Byte>, type: UByte, value:UByte?) {
+        if (value != null && value > 0u) {
+            result.add(type.toByte())
+            result.add(4)
+            result.add((value).toByte())
+        }
+    }
+
+    fun addTLVForUInt32(result: MutableList<Byte>, type: UByte, value:UInt?) {
+        if (value != null && value > 0u) {
+            result.add(type.toByte())
+            result.add(4)
+            result.add(((value shr 24) and 0xFFu).toByte())
+            result.add(((value shr 16) and 0xFFu).toByte())
+            result.add(((value shr 8) and 0xFFu).toByte())
+            result.add((value and 0xFFu).toByte())
+        }
+    }
+
+    fun addTLVForInt32(result: MutableList<Byte>, type: UByte, value:Int?) {
+        if (value != null) {
+            result.add(type.toByte())
+            result.add(4)
+            result.add(((value ushr 24) and 0xFF).toByte())
+            result.add(((value ushr 16) and 0xFF).toByte())
+            result.add(((value ushr 8) and 0xFF).toByte())
+            result.add((value and 0xFF).toByte())
+        }
+    }
+
+    fun addTLVForString(result: MutableList<Byte>, type: UByte, value: String?) {
+        val valueData = value?.toByteArray(Charsets.UTF_8)
+        if (valueData == null || valueData.size > 255) return
+
+        result.add(type.toByte())
+        result.add(valueData.size.toByte())
+        result.addAll(valueData.toList())
+    }
+
 }
