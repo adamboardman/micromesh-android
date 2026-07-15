@@ -23,17 +23,19 @@ object AppConstants {
         const val BROADCAST_CLEANUP_DELAY_MS: Long = 500L
 
         // GATT client RSSI updates
-        const val RSSI_UPDATE_INTERVAL_MS: Long = 5_000L
+        const val RSSI_UPDATE_INTERVAL_MS: Long = 5*60*1_000L
 
         object Gatt {
             val SERVICE_UUID: UUID = UUID.fromString("F47B5E2D-4A9E-4C5A-9B3F-8E1D2C3A4B5C")
             val CHARACTERISTIC_UUID: UUID = UUID.fromString("A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D")
             val DESCRIPTOR_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+            val REPEATER_SERVICE_UUID: UUID = UUID.fromString("298CFECA-A10D-49EE-8A74-E513547F7EF7")
+            val REPEATER_CHARACTERISTIC_UUID: UUID = UUID.fromString("A8D99167-E58C-4A0C-9565-E2F1A7FBC05D")
         }
     }
 
     object Sync {
-        const val CLEANUP_INTERVAL_MS: Long = 60_000L
+        const val CLEANUP_INTERVAL_MS: Long = 4*60_000L
     }
 
     object Fragmentation {

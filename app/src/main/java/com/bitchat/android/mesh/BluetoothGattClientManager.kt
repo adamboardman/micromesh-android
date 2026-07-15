@@ -262,8 +262,11 @@ class BluetoothGattClientManager(
         val scanFilter = ScanFilter.Builder()
             .setServiceUuid(ParcelUuid(AppConstants.Mesh.Gatt.SERVICE_UUID))
             .build()
-        
-        val scanFilters = listOf(scanFilter) 
+        val repeaterScanFilter = ScanFilter.Builder()
+            .setServiceUuid(ParcelUuid(AppConstants.Mesh.Gatt.REPEATER_SERVICE_UUID))
+            .build()
+
+        val scanFilters = listOf(scanFilter, repeaterScanFilter)
         
         Log.d(TAG, "Starting BLE scan with target service UUID: ${AppConstants.Mesh.Gatt.SERVICE_UUID}")
         
@@ -438,7 +441,8 @@ class BluetoothGattClientManager(
         
         // CRITICAL: Only process devices that have our service UUID
         val hasOurService = scanRecord?.serviceUuids?.any { it.uuid == AppConstants.Mesh.Gatt.SERVICE_UUID } == true
-        if (!hasOurService) {
+        val hasRepeaterService = scanRecord?.serviceUuids?.any { it.uuid == AppConstants.Mesh.Gatt.REPEATER_SERVICE_UUID } == true
+        if (!hasOurService && !hasRepeaterService) {
             return
         }
 
@@ -448,8 +452,11 @@ class BluetoothGattClientManager(
 
         // Try to extract peerID from Service Data (if available) for stable identity
         val serviceData = scanRecord?.getServiceData(ParcelUuid(AppConstants.Mesh.Gatt.SERVICE_UUID))
+        val repeaterServiceData = scanRecord?.getServiceData(ParcelUuid(AppConstants.Mesh.Gatt.REPEATER_SERVICE_UUID))
         val peerID = if (serviceData != null && serviceData.size >= 8) {
             serviceData.joinToString("") { "%02x".format(it) }
+        } else if (repeaterServiceData != null && repeaterServiceData.size >= 8) {
+            repeaterServiceData.joinToString("") { "%02x".format(it) }
         } else {
             null
         }
@@ -598,6 +605,18 @@ class BluetoothGattClientManager(
 
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {                
                 if (status == BluetoothGatt.GATT_SUCCESS) {
+                    val repeaterService = gatt.getService(AppConstants.Mesh.Gatt.REPEATER_SERVICE_UUID)
+                    if (repeaterService != null) {
+                        val repeaterCharacteristic = repeaterService.getCharacteristic(AppConstants.Mesh.Gatt.REPEATER_CHARACTERISTIC_UUID)
+                        if (repeaterCharacteristic != null) {
+                            connectionTracker.getDeviceConnection(deviceAddress)?.let { deviceConn ->
+                                val updatedConn = deviceConn.copy(characteristic = repeaterCharacteristic)
+                                connectionTracker.updateDeviceConnection(deviceAddress, updatedConn)
+                                Log.d(TAG, "Client: Updated device connection with repeater characteristic for $deviceAddress")
+                            }
+                        }
+                        gatt.setCharacteristicNotification(repeaterCharacteristic, true)
+                    }
                     val service = gatt.getService(AppConstants.Mesh.Gatt.SERVICE_UUID)
                     if (service != null) {
                         val characteristic = service.getCharacteristic(AppConstants.Mesh.Gatt.CHARACTERISTIC_UUID)
@@ -627,7 +646,7 @@ class BluetoothGattClientManager(
                             Log.e(TAG, "Client: Required characteristic not found for $deviceAddress")
                             gatt.disconnect()
                         }
-                    } else {
+                    } else if (repeaterService == null) {
                         Log.e(TAG, "Client: Required service not found for $deviceAddress")
                         gatt.disconnect()
                     }

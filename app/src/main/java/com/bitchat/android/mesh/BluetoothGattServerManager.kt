@@ -234,7 +234,7 @@ class BluetoothGattServerManager(
                     return
                 }
                 
-                if (characteristic.uuid == AppConstants.Mesh.Gatt.CHARACTERISTIC_UUID) {
+                if (characteristic.uuid == AppConstants.Mesh.Gatt.CHARACTERISTIC_UUID || characteristic.uuid == AppConstants.Mesh.Gatt.REPEATER_CHARACTERISTIC_UUID) {
                     Log.i(TAG, "Server: Received packet from ${device.address}, size: ${value.size} bytes")
                     val packet = BitchatPacket.fromBinaryData(value)
                     if (packet != null) {
