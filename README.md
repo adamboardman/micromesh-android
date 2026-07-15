@@ -1,48 +1,18 @@
-<p align="center">
-    <img src="https://github.com/user-attachments/assets/188c42f8-d249-4a72-b27a-e2b4f10a00a8" alt="Bitchat Android Logo" width="480">
-</p>
-
 > [!WARNING]
 > This software has not received external security review and may contain vulnerabilities and may not necessarily meet its stated security goals. Do not use it for sensitive use cases, and do not rely on its security until it has been reviewed. Work in progress.
 
-# bitchat for Android
+# MicroMesh for Android
 
-A secure, decentralized, peer-to-peer messaging app that works over Bluetooth mesh networks. No internet required for mesh chats, no servers, no phone numbers - just pure encrypted communication. Bitchat also supports geohash channels, which use an internet connection to connect you with others in your geographic area.
+This is a fork of the Android port of [bitchat iOS app](https://github.com/jackjackbits/bitchat).
 
-This is the **Android port** of the original [bitchat iOS app](https://github.com/jackjackbits/bitchat), maintaining 100% protocol compatibility for cross-platform communication.
+Built as a communications platform for our Local Community Center, we'll be putting 
+[ble-repeaters](https://github.com/adamboardman/ble-repeater) about the place which 
+will store chatroom conversations across time and allow you to catch up when you 
+next visit etc.
 
-## Install bitchat
+## Install MicroMesh
 
-You can download the latest version of bitchat for Android from the [GitHub Releases page](https://github.com/permissionlesstech/bitchat-android/releases).
-
-Or you can:
-
-[<img alt="Get it on Google Play" height="60" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"/>](https://play.google.com/store/apps/details?id=com.bitchat.droid)
-
-**Instructions:**
-
-1.  **Download the APK:** On your Android device, navigate to the link above and download the latest `.apk` file. Open it.
-2.  **Allow Unknown Sources:** On some devices, before you can install the APK, you may need to enable "Install from unknown sources" in your device's settings. This is typically found under **Settings > Security** or **Settings > Apps & notifications > Special app access**.
-3.  **Install:** Open the downloaded `.apk` file to begin the installation.
-
-## License
-
-This project is released into the public domain. See the [LICENSE](LICENSE.md) file for details.
-
-## Features
-
-- **✅ Cross-Platform Compatible**: Full protocol compatibility with iOS bitchat
-- **✅ Decentralized Mesh Network**: Automatic peer discovery and multi-hop message relay over Bluetooth LE
-- **✅ End-to-End Encryption**: X25519 key exchange + AES-256-GCM for private messages
-- **✅ Channel-Based Chats**: Topic-based group messaging with optional password protection
-- **✅ Store & Forward**: Messages cached for offline peers and delivered when they reconnect
-- **✅ Privacy First**: No accounts, no phone numbers, no persistent identifiers
-- **✅ IRC-Style Commands**: Familiar `/join`, `/msg`, `/who` style interface
-- **✅ Message Retention**: Optional channel-wide message saving controlled by channel owners
-- **✅ Emergency Wipe**: Triple-tap logo to instantly clear all data
-- **✅ Modern Android UI**: Jetpack Compose with Material Design 3
-- **✅ Dark/Light Themes**: Terminal-inspired aesthetic matching iOS version
-- **✅ Battery Optimization**: Adaptive scanning and power management
+Currently its early days and so build it yourself.
 
 ## Android Setup
 
@@ -57,14 +27,14 @@ This project is released into the public domain. See the [LICENSE](LICENSE.md) f
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/permissionlesstech/bitchat-android.git
-   cd bitchat-android
+   git clone https://github.com/adamboardman/micromesh-android.git
+   cd micromesh-android
    ```
 
 2. **Open in Android Studio:**
    ```bash
    # Open Android Studio and select "Open an Existing Project"
-   # Navigate to the bitchat-android directory
+   # Navigate to the micromesh-android directory
    ```
 
 3. **Build the project:**
@@ -150,7 +120,6 @@ The app requires the following permissions (automatically requested):
 
 - **Password Protection**: Channel owners can set passwords with `/pass`
 - **Message Retention**: Owners can enable mandatory message saving with `/save`
-- **@ Mentions**: Use `@nickname` to mention users (with autocomplete)
 - **Ownership Transfer**: Pass control to trusted users with `/transfer`
 
 ## Security & Privacy

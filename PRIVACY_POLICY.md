@@ -1,6 +1,12 @@
-# bitchat Privacy Policy
+# micromesh/bitchat Privacy Policy
 
-*Last updated: January 2025*
+*Last updated: July 2026*
+
+## Relationship to bitchat
+
+MicroMesh is a fork of bitchat, they are free to take back any improvements we add, but we don't expect them to, if they remove a feature (/join is gone from iOS but still here in Android - but messages are sent to the main room) we will still keep it if we want to.
+
+The rest of this policy is from bitchat, we've just added some technical details that means you shouldn't think a sufficiently motivated adversary wouldn't be able to track you.
 
 ## Our Commitment
 
@@ -59,6 +65,14 @@ When you use bitchat, nearby peers can see:
 - Your ephemeral public key (changes each session)
 - Messages you send to public rooms or directly to them
 - Your approximate Bluetooth signal strength (for connection quality)
+
+### With Chat Sniffers
+
+When you use bluetooth low energy (BLE) to communicate, an adversary also in the area can use a BLE debugging tool say 'nRF Connect' can view:
+- Your device name (this is what is set within your device settings, which you can customise, often it is the name of the phone model as specified by the manufacture). Service:0x1800 -> Device Name:0x2A00 -> Read property
+- Your peerID (this is a 64bit integer that is unique to your phone and seems to stay the same - we use it in the code to stop from connecting to your device many times). Scan response - Service Data: 0x....
+- Can advertise themselves as a repeater and so read any unencrypted messages being sent about the mesh along with sender ID's. Also packet headers for encrypted messages, including peerID's for sender and recipient, padding size and payloads.
+- A wee note about encrypted payloads, from the same from->to pair a repeat of the same message will be encrypted the same within the same session key. So say for example you were in a bidding war at an auction and you were using this chat to privately converse with your team, and they keep saying 'higher' or a similar message to encourage you to bid up, then it gets to your limit and they say 'stop thats us' just after you've won the bid for the third time against the same bidder. All is fine unless you have been bidding against the sellers agent who is also monitoring your encrypted comms. They saw you recieve the same thing three times before out bidding their pushup agent, then they just saw a different message, so now they tell their agent to stop bidding and you win the item but you've paid your max rather than the fair price as you could have had it a few bids back. Even if the app had been adding padding before encryption it wouldn't have helped. I've not checked this form of encryption but I suspect padding before encryption will still give the same output from the same input for the same key. The fix is of course to include the padding size and random bytes within the encrypted payload.
 
 ### With Room Members
 
@@ -143,7 +157,7 @@ If we update this policy:
 ## Contact
 
 bitchat is an open source project. For privacy questions:
-- Review our code: https://github.com/yourusername/bitchat
+- Review our code: https://github.com/adamboardman/micromes-android
 - Open an issue on GitHub
 - Join the discussion in public rooms
 
@@ -154,3 +168,5 @@ Privacy isn't just a feature—it's the entire point. bitchat proves that modern
 ---
 
 *This policy is released into the public domain under The Unlicense, just like bitchat itself.*
+
+Note: There is a point of contention the bitchat-android app is GPL-3'd rather than Unliscensed as bitchat (swift).
