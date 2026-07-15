@@ -51,6 +51,7 @@ object RelayDirectory {
 
     fun initialize(application: Application) {
         if (initialized) return
+        if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled(false)) return
         synchronized(this) {
             if (initialized) return
             try {
@@ -136,7 +137,7 @@ object RelayDirectory {
 
     private fun startPeriodicRefresh(application: Application) {
         ioScope.launch {
-            while (true) {
+            while (com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) {
                 try {
                     if (isStale(application)) {
                         fetchAndMaybeSwap(application)
@@ -144,7 +145,7 @@ object RelayDirectory {
                 } catch (e: Exception) {
                     Log.w(TAG, "Periodic refresh encountered an error: ${e.message}")
                 }
-                delay(TimeUnit.MINUTES.toMillis(1))
+                delay(TimeUnit.MINUTES.toMillis(60))
             }
         }
     }

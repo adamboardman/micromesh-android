@@ -101,6 +101,8 @@ class GeohashViewModel(
             locationChannelManager = com.bitchat.android.geohash.LocationChannelManager.getInstance(getApplication())
             viewModelScope.launch {
                 locationChannelManager?.selectedChannel?.collect { channel ->
+                    if (channel == com.bitchat.android.geohash.ChannelID.Location && !com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled(false))
+                        return@collect
                     state.setSelectedLocationChannel(channel)
                     switchLocationChannel(channel)
                 }
@@ -132,7 +134,7 @@ class GeohashViewModel(
                 if (targetGeohashes.isNotEmpty()) {
                     // Enter heartbeat loop for this set of channels
                     // If channels change (e.g. user moves), collectLatest cancels this loop and starts a new one immediately
-                    while (true) {
+                    while (com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) {
                         // Randomize loop interval (40-80s, average 60s)
                         val loopInterval = secureRandom.nextLong(40000L, 80000L)
                         var timeSpent = 0L

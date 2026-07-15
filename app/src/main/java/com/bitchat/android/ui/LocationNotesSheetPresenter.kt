@@ -135,9 +135,11 @@ private fun LocationNotesErrorSheet(
                 Button(onClick = {
                     // UNIFIED FIX: Enable location services first (user toggle)
                     locationManager.enableLocationServices()
-                    // Then request location channels (which will also request permission if needed)
-                    locationManager.enableLocationChannels()
-                    locationManager.refreshChannels()
+                    if (com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) {
+                        // Then request location channels (which will also request permission if needed)
+                        locationManager.enableLocationChannels()
+                        locationManager.refreshChannels()
+                    }
                 }) {
                     Text("Enable Location")
                 }

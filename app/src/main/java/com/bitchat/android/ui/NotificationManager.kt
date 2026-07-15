@@ -103,6 +103,7 @@ class NotificationManager(
             }
             systemNotificationManager.createNotificationChannel(dmChannel)
 
+            if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled(false)) return
             // Geohash notifications channel
             val geohashName = "Geohash Chats"
             val geohashDescriptionText = "Notifications for mentions and messages in geohash location channels"

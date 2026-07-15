@@ -7,6 +7,7 @@ object MeshServicePreferences {
     private const val PREFS_NAME = "bitchat_mesh_service_prefs"
     private const val KEY_AUTO_START = "auto_start_on_boot"
     private const val KEY_BACKGROUND_ENABLED = "background_enabled"
+    private const val KEY_GEOHASH_ENABLED = "geohash_enabled"
 
     private lateinit var prefs: SharedPreferences
 
@@ -28,5 +29,13 @@ object MeshServicePreferences {
 
     fun setBackgroundEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_BACKGROUND_ENABLED, enabled).apply()
+    }
+
+    fun isGeohashEnabled(default: Boolean = true): Boolean {
+        return prefs.getBoolean(KEY_GEOHASH_ENABLED, default)
+    }
+
+    fun setGeohashEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GEOHASH_ENABLED, enabled).apply()
     }
 }

@@ -369,6 +369,7 @@ fun AboutSheet(
                         val powEnabled by PoWPreferenceManager.powEnabled.collectAsState()
                         val powDifficulty by PoWPreferenceManager.powDifficulty.collectAsState()
                         var backgroundEnabled by remember { mutableStateOf(com.bitchat.android.service.MeshServicePreferences.isBackgroundEnabled(true)) }
+                        var geohashEnabled by remember { mutableStateOf(com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled(false)) }
                         val torMode = remember { mutableStateOf(TorPreferenceManager.get(context)) }
                         val torProvider = remember { ArtiTorManager.getInstance() }
                         val torStatus by torProvider.statusFlow.collectAsState()
@@ -410,6 +411,29 @@ fun AboutSheet(
                                         color = colorScheme.outline.copy(alpha = 0.12f)
                                     )
                                     
+                                    // Online Geohash Channels
+                                    SettingsToggleRow(
+                                        icon = Icons.Filled.Public,
+                                        title = stringResource(R.string.about_online_geohash),
+                                        subtitle = stringResource(R.string.about_online_geohash_tip),
+                                        checked = geohashEnabled,
+                                        onCheckedChange = { enabled ->
+                                            geohashEnabled = enabled
+                                            com.bitchat.android.service.MeshServicePreferences.setGeohashEnabled(enabled)
+//                                            TODO turn it on/off from here
+//                                            if (!enabled) {
+//                                                TODO turn off - this is mostly handled by the while(true) loops being told to check the preference
+//                                            } else {
+//                                                TODO restart
+//                                            }
+                                        }
+                                    )
+
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 56.dp),
+                                        color = colorScheme.outline.copy(alpha = 0.12f)
+                                    )
+
                                     // Proof of Work Toggle
                                     SettingsToggleRow(
                                         icon = Icons.Filled.Speed,

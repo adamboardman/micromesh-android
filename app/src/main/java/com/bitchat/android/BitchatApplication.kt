@@ -13,6 +13,9 @@ class BitchatApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Initialize mesh service preferences
+        try { com.bitchat.android.service.MeshServicePreferences.init(this) } catch (_: Exception) { }
+
         // Initialize Tor first so any early network goes over Tor
         try {
             val torProvider = ArtiTorManager.getInstance()
@@ -52,9 +55,6 @@ class BitchatApplication : Application() {
             com.bitchat.android.nostr.GeohashAliasRegistry.initialize(this)
             com.bitchat.android.nostr.GeohashConversationRegistry.initialize(this)
         } catch (_: Exception) { }
-
-        // Initialize mesh service preferences
-        try { com.bitchat.android.service.MeshServicePreferences.init(this) } catch (_: Exception) { }
 
         // Proactively start the foreground service to keep mesh alive
         try { com.bitchat.android.service.MeshForegroundService.start(this) } catch (_: Exception) { }

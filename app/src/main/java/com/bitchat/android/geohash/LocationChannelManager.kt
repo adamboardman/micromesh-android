@@ -326,8 +326,10 @@ class LocationChannelManager private constructor(private val context: Context) {
     private fun onLocationUpdated(location: Location) {
         lastLocation = location
         _isLoadingLocation.value = false
-        computeChannels(location)
-        reverseGeocodeIfNeeded(location)
+        if (com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) {
+            computeChannels(location)
+            reverseGeocodeIfNeeded(location)
+        }
     }
 
 

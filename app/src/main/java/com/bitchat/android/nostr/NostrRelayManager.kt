@@ -242,6 +242,8 @@ class NostrRelayManager private constructor() {
      * Connect to all configured relays
      */
     fun connect() {
+        if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled(false)) return
+
         Log.d(TAG, "🌐 Connecting to ${relaysList.size} Nostr relays")
         
         scope.launch {
@@ -280,6 +282,8 @@ class NostrRelayManager private constructor() {
      * Send an event to specified relays (or all if none specified)
      */
     fun sendEvent(event: NostrEvent, relayUrls: List<String>? = null) {
+        if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) return
+
         val targetRelays = relayUrls ?: relaysList.map { it.url }
         
         // Add to queue for reliability
@@ -331,6 +335,8 @@ class NostrRelayManager private constructor() {
      * Send a subscription to the appropriate relays
      */
     private fun sendSubscriptionToRelays(subscriptionInfo: SubscriptionInfo) {
+        if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) return
+
         val request = NostrRequest.Subscribe(subscriptionInfo.id, listOf(subscriptionInfo.filter))
         val message = gson.toJson(request, NostrRequest::class.java)
         
@@ -428,7 +434,8 @@ class NostrRelayManager private constructor() {
      */
     fun resetAllConnections() {
         disconnect()
-        
+        if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) return
+
         // Reset all relay states
         relaysList.forEach { relay ->
             relay.reconnectAttempts = 0
@@ -564,7 +571,7 @@ class NostrRelayManager private constructor() {
         stopSubscriptionValidation() // Stop any existing validation
         
         subscriptionValidationJob = scope.launch {
-            while (isActive) {
+            while (com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled() && isActive) {
                 delay(SUBSCRIPTION_VALIDATION_INTERVAL)
                 
                 try {
@@ -612,7 +619,8 @@ class NostrRelayManager private constructor() {
         if (connections.containsKey(urlString)) {
             return
         }
-        
+        if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled(false)) return
+
         Log.v(TAG, "Attempting to connect to Nostr relay: $urlString")
         
         try {
@@ -633,7 +641,9 @@ class NostrRelayManager private constructor() {
         try {
             val request = NostrRequest.Event(event)
             val message = gson.toJson(request, NostrRequest::class.java)
-            
+
+            if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) return
+
             Log.v(TAG, "📤 Sending Nostr event (kind: ${event.kind}) to relay: $relayUrl")
             
             val success = webSocket.send(message)
@@ -769,7 +779,9 @@ class NostrRelayManager private constructor() {
         ).toLong()
         
         relay.nextReconnectTime = System.currentTimeMillis() + backoffInterval
-        
+
+        if (!com.bitchat.android.service.MeshServicePreferences.isGeohashEnabled()) return
+
         Log.d(TAG, "Scheduling reconnection to $relayUrl in ${backoffInterval / 1000}s (attempt ${relay.reconnectAttempts})")
         
         // Schedule reconnection

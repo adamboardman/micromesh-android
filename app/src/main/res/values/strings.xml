@@ -128,6 +128,8 @@
   <string name="about_pow_desc_high">high - strong spam protection</string>
   <string name="about_pow_desc_very_high">very high - may cause delays</string>
   <string name="about_pow_desc_extreme">extreme - significant computation required</string>
+  <string name="about_online_geohash">online geohash channels</string>
+  <string name="about_online_geohash_tip">connect to the internet for the geohash channels (requires app-restart to re-enable).</string>
   <string name="about_network">network</string>
   <string name="about_tor_off">tor off</string>
   <string name="about_tor_on">tor on</string>
@@ -215,6 +217,7 @@
   <string name="location_permission_granted">\u2713 location permission granted</string>
   <string name="checking_permissions">checking permissions...</string>
   <string name="finding_nearby_channels">finding nearby channels…</string>
+  <string name="geomesh_not_enabled">geomesh has been disabled, re-enable to select locality based channels…</string>
   <string name="bookmarked">bookmarked</string>
   <string name="geohash_placeholder">geohash</string>
   <string name="invalid_geohash">invalid geohash</string>
